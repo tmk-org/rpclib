@@ -652,8 +652,11 @@ inline object::object(const msgpack_object& o)
 
 inline void operator<< (clmdep_msgpack::object& o, const msgpack_object& v)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
     // FIXME beter way?
     std::memcpy(&o, &v, sizeof(v));
+#pragma GCC diagnostic pop
 }
 
 inline object::operator msgpack_object() const
