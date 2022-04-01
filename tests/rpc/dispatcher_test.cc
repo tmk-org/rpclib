@@ -23,6 +23,13 @@ void dummy_void_refarg(int& p)
 { 
     p++; 
 }
+
+int dummy_int_refarg(int& p) 
+{ 
+    p++; 
+    return p;
+}
+
 class binding_test : public testing::Test {
 public:
     binding_test() : dispatcher() {
@@ -72,8 +79,14 @@ TEST_F(binding_test, freefunc_void_singlearg) {
     EXPECT_TRUE(g_dummy_void_singlearg_called);
 }*/
 
+template<typename...Args> void PrintType()
+{
+    printf("%s\n",__PRETTY_FUNCTION__);
+}
 
 TEST_F(binding_test, freefunc_void_single_ref_arg) {
+    using res_type = rpc::detail::func_traits< dummy_void_multiarg >::result_type;
+    PrintType< res_type >();
     EXPECT_NO_THROW(
         ref_arg_func();
     );
