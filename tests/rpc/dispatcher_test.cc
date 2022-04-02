@@ -79,14 +79,137 @@ TEST_F(binding_test, freefunc_void_singlearg) {
     EXPECT_TRUE(g_dummy_void_singlearg_called);
 }*/
 
-template<typename...Args> void PrintType()
+template<size_t Index,typename T> struct element_holder;
+
+template<size_t Index,typename T> struct element_holder<Index,T&>:std::integral_constant<size_t,Index>
+{};
+
+template<typename Head,typename... Rest> struct ReferenceTupleElementHandler;
+
+template<   typename Enable,
+            typename Head,
+            typename... Rest
+            > struct ReferenceTupleElementHandlerImpl;
+
+template<typename Head,typename... Rest> struct ReferenceTupleElementHandler<std::tuple<Head,Rest...> >
+{
+    using type = ReferenceTupleElementHandlerImpl<
+                                                void,
+                                                std::tuple<Head,Rest...>,
+                                                std::integral_constant<size_t ,1+sizeof...(Rest)>
+                                            >::type;
+};
+
+
+
+template<   typename Enable,
+            typename Head,
+            typename... Rest,
+            size_t TupleLength
+            > struct ReferenceTupleElementHandlerImpl<
+                                    std::enable_if_t< !std::is_lvalue_reference_v<Head> >,
+                                    std::tuple<Head,Rest...>,
+                                    std::integral_constant<size_t,TupleLength> >
+{
+    using type=
+                ReferenceTupleElementHandlerImpl<
+                                            void,
+                                            std::tuple<Rest...>,
+                                            std::integral_constant<size_t,TupleLength> 
+                                            >::type;
+};
+
+template<   typename Enable,
+            typename Head,
+            typename... Rest,
+            size_t TupleLength
+            > struct ReferenceTupleElementHandlerImpl<
+                                    std::enable_if_t< !std::is_lvalue_reference_v<Head> >,
+                                    std::tuple<Head,Rest...>,
+                                    std::integral_constant<size_t,TupleLength> >
+{
+    using type= std::tuple< element_holder<TupleLength-1-sizeof...(Rest)>,
+                            ReferenceTupleElementHandlerImpl<
+                                            void,
+                                            std::tuple<Rest...>,
+                                            std::integral_constant<size_t,TupleLength> 
+                                            >::type
+                            >;
+};
+
+template<   typename Enable, 
+            typename Head,
+            size_t TupleLength> struct 
+        ReferenceTupleElementHandlerImpl<
+                                    void,
+                                    Head&,
+                                    std::integral_constant<size_t,TupleLength> >
+{
+    using type=element_holder<TupleLength - 1 ,Head>;
+};
+
+template<   typename Enable,
+            typename Head,
+            size_t TupleLength> struct 
+        ReferenceTupleElementHandlerImpl<
+                                    std::enable_if_t<!std::is_reference_v<Head> >,
+                                    Head,
+                                    std::integral_constant<size_t,TupleLength> >
+{
+    using type=void;
+};
+
+
+
+template<typename T1,typename...T > struct ResultTraitsImpl;
+
+template<typename Res> struct ResultTraitsImpl<Res ,std::enable_if_t< !std::is_reference_v<Res> > >
+{
+    typedef Res type;
+};
+
+template<typename... Args> struct pack_has_references
+{
+    static constexpr bool value {(std::is_lvalue_reference_v<Args> || ...)};
+};
+
+
+template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::enable_if_t< std::is_void_v<Res> && pack_has_references<Args...>::value >,Args...  >
+{
+    typedef std::tuple<Args...>  type;
+};
+
+template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::enable_if_t<  !pack_has_references<Args...>::value >,Args...  >
+{
+    typedef Res  type;
+};
+
+template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::enable_if_t< !std::is_void_v<Res> && pack_has_references<Args...>::value >,Args...  >
+{
+    typedef std::tuple<Res,Args...>  type;
+};
+
+template<typename Arg> void PrintType()
 {
     printf("%s\n",__PRETTY_FUNCTION__);
 }
 
+template<typename T,typename...T1> struct ResultTraits : ResultTraitsImpl<T,void,T1...>
+{
+
+};
+
+template<typename T> struct func_traits2;
+
+template<typename Res,typename...Args> struct func_traits2<Res(*)(Args...)> : ResultTraits<Res,Args...>
+{
+
+};
+
+
 TEST_F(binding_test, freefunc_void_single_ref_arg) {
-    using res_type = rpc::detail::func_traits< dummy_void_multiarg >::result_type;
-    PrintType< res_type >();
+    PrintType< func_traits2<decltype(&dummy_int_refarg)>::type >();
+    PrintType< func_traits2<decltype(&dummy_void_refarg)>::type >();
     EXPECT_NO_THROW(
         ref_arg_func();
     );

@@ -41,10 +41,10 @@ struct func_traits<R (C::*)(Args...)> : func_traits<R (*)(Args...)> {};
 
 template <typename C, typename R, typename... Args>
 struct func_traits<R (C::*)(Args...) const> : func_traits<R (*)(Args...)> {};
+/*
+template<typename T1,typename...T > struct ResultTraitsImpl;
 
-template<typename... T> struct ResultTraits;
-
-template<typename Res> struct ResultTraits<Res>
+template<typename Res> struct ResultTraitsImpl<Res ,std::enable_if_t< !std::is_reference_v<Res> > >
 {
     typedef Res type;
 };
@@ -54,19 +54,34 @@ template<typename... Args> struct pack_has_references
     static constexpr bool value {(std::is_lvalue_reference_v<Args> || ...)};
 };
 
-template<typename Res,typename... Args > struct ResultTraits<Res,Args...>
+
+template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::enable_if_t< std::is_void_v<Res> && pack_has_references<Args...>::value >,Args...  >
 {
-    typedef std::enable_if_t< std::is_void_v<Res> && pack_has_references<Args...>::value,std::tuple<Args...> >  type;
+    typedef Res  type;
 };
 
-template<typename Res,typename... Args > struct ResultTraits<Res,Args...>
+template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::enable_if_t<  !pack_has_references<Args...>::value >,std::tuple<Args...>  >
 {
-    typedef std::enable_if_t< pack_has_references<Args...>::value,Res > type;
+    typedef Res  type;
 };
 
+template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::enable_if_t< !std::is_void_v<Res> && pack_has_references<Args...>::value >,std::tuple<Args...>  >
+{
+    typedef Res  type;
+};
+
+template<typename Arg> void PrintType()
+{
+    printf("%s\n",__PRETTY_FUNCTION__);
+}
+
+template<typename T,typename...T1> struct ResultTraits : ResultTraitsImpl<T,void,T1...>
+{
+
+};*/
 template <typename R, typename... Args> struct func_traits<R (*)(Args...)> {
-    //using result_type = R;
-    using result_type = ResultTraits<R,Args...>::type;
+    using result_type = R;
+    //using result_type = ResultTraits<R,Args...>::type;
     using arg_count = std::integral_constant<std::size_t, sizeof...(Args)>;
     using args_type = std::tuple<typename std::decay<Args>::type...>;
 };
