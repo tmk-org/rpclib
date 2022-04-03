@@ -131,6 +131,12 @@ template<typename Head,typename... Rest> struct ReferenceTupleElementHandler<std
                                 >::type;
 };
 
+template<> struct ReferenceTupleElementHandler<void >
+{
+    
+    using type = void;
+};
+
 template<typename T> struct is_tuple : std::false_type{};
 template<typename... Ts> struct is_tuple< std::tuple<Ts...> > : std::true_type{};
 
@@ -219,8 +225,9 @@ template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::ena
 
 template<typename T,typename...T1> struct ResultTraits : ResultTraitsImpl<T,void,T1...>{};
 template <typename R, typename... Args> struct func_traits<R (*)(Args...)> {
+    using merged_args_type = ResultTraits<R,Args...>::type;
     using result_type = R;
-    //using result_type = ResultTraits<R,Args...>::type;
+    using refs_args_type = ReferenceTupleElementHandler< merged_args_type > ::type;
     using arg_count = std::integral_constant<std::size_t, sizeof...(Args)>;
     using args_type = std::tuple<typename std::decay<Args>::type...>;
 };

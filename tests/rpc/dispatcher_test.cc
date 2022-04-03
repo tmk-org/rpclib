@@ -86,12 +86,6 @@ TEST_F(binding_test, freefunc_void_singlearg) {
 
 
 
-template<typename T> struct func_traits2;
-
-template<typename Res,typename...Args> struct func_traits2<Res(*)(Args...)> : ResultTraits<Res,Args...>
-{
-
-};
 
 template<typename Arg> void PrintType()
 {
@@ -100,18 +94,15 @@ template<typename Arg> void PrintType()
 
 
 TEST_F(binding_test, freefunc_void_single_ref_arg) {
-    using func_args_types1 = func_traits<decltype(&dummy_int_refarg)>::type;
-    using func_args_types2 = func_traits2<decltype(&dummy_void_refarg)>::type;
-    using func_args_types3 = func_traits2<decltype(& dummy_multi_arg_wref)>::type;
- 
+    using func_args_types1 = rpc::detail::func_traits<decltype(&dummy_int_refarg)>::refs_args_type;
+    using func_args_types2 = rpc::detail::func_traits<decltype(&dummy_void_refarg)>::refs_args_type;
+    using func_args_types3 = rpc::detail::func_traits<decltype(& dummy_multi_arg_wref)>::refs_args_type;
+    using func_args_types4 = rpc::detail::func_traits<decltype(&dummy_void_multiarg)>::refs_args_type;
+
     PrintType<func_args_types1>();
-    PrintType< ReferenceTupleElementHandler< func_args_types1 >::type>();
-
     PrintType<func_args_types2>();
-    PrintType< ReferenceTupleElementHandler< func_args_types2 >::type>();
-
     PrintType<func_args_types3>();
-    PrintType< ReferenceTupleElementHandler< func_args_types3 >::type>();
+    PrintType<func_args_types4>();
 
     EXPECT_NO_THROW(
         ref_arg_func();
