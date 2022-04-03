@@ -84,183 +84,11 @@ TEST_F(binding_test, freefunc_void_singlearg) {
     EXPECT_TRUE(g_dummy_void_singlearg_called);
 }*/
 
-template<size_t Index,typename T> struct element_holder;
-
-template<size_t Index,typename T> struct element_holder<Index,T&>:std::integral_constant<size_t,Index>
-{};
-
-template<typename Head,typename... Rest> struct ReferenceTupleElementHandler;
-
-template<   typename T,
-            typename T1,
-            typename... T2
-            > struct ReferenceTupleElementHandlerImplRoot;
-
-template<typename T1,typename...T2> struct TupleVoidRemover;
-
-template<typename T1,typename...T2> 
-    struct TupleVoidRemover<    std::tuple<T1,T2...>,
-                                std::enable_if_t<   (std::tuple_size_v< std::tuple<T1,T2...> > == 1) 
-                                                    && (!std::is_void_v<T1>)
-                                                > 
-                            >
-{
-    using type=std::tuple<T1>;
-};
-
-template<typename T1,typename...T2> 
-    struct TupleVoidRemover<    std::tuple<T1,T2...>,
-                                std::enable_if_t<   (std::tuple_size_v< std::tuple<T1,T2...> > == 1) 
-                                                    && (std::is_void_v<T1>)
-                                                > 
-                            >
-{
-    using type=void;
-};
-
-template<typename T1,typename...T2,size_t...idxs> 
-    struct TupleVoidRemover<    std::tuple<T1,T2...>,
-                                std::index_sequence<idxs...> 
-                            >
-{
-    using type = std::tuple< std::tuple_element_t<idxs,std::tuple<T1,T2...> >... >;
-};
-
-template<typename T1,typename...T2> 
-    struct TupleVoidRemover<    std::tuple<T1,T2...>,
-                                std::enable_if_t< (std::tuple_size_v< std::tuple<T1,T2...> > > 1) 
-                                                && std::is_void_v<
-                                                                std::tuple_element_t< 
-                                                                                    std::tuple_size_v< 
-                                                                                                    std::tuple<T1,T2...> 
-                                                                                                    > - 1, 
-                                                                                    std::tuple<T1,T2...> 
-                                                                                    > 
-                                                                > 
-                                                > 
-                            >
-{
-    using tuple_type = std::tuple<T1,T2...>;
-    using type= TupleVoidRemover<tuple_type,std::make_index_sequence< std::tuple_size_v< tuple_type > -1 > >::type;
-};
-
-template<typename T1,typename...T2> 
-    struct TupleVoidRemover<    std::tuple<T1,T2...>,
-                                std::enable_if_t< 
-                                                (std::tuple_size_v< std::tuple<T1,T2...> > > 1) 
-                                                &&  !std::is_void_v<
-                                                                    std::tuple_element_t< 
-                                                                                    std::tuple_size_v< std::tuple<T1,T2...> > - 1, 
-                                                                                    std::tuple<T1,T2...> 
-                                                                                        > 
-                                                                    > 
-                                                    
-                                                > 
-                            >
-{
-    using type=std::tuple<T1,T2...>;
-};
-
-template<typename Head,typename... Rest> struct ReferenceTupleElementHandler<std::tuple<Head,Rest...> >
-{
-    using preliminary_type = ReferenceTupleElementHandlerImplRoot<
-                                                std::integral_constant<size_t ,1+sizeof...(Rest)>,
-                                                std::tuple<Head,Rest...>,
-                                                void
-                                            >::type;
-    using type = TupleVoidRemover<
-                                preliminary_type,
-                                void
-                                >::type;
-};
-
-template<typename T> struct is_tuple : std::false_type{};
-template<typename... Ts> struct is_tuple< std::tuple<Ts...> > : std::true_type{};
-
-template<   size_t TLen,
-            typename T1
-            > struct ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t ,TLen>,T1,std::enable_if_t< !is_tuple<T1>::value && std::is_reference_v<T1> > >
-{
-    using type = std::tuple<element_holder<TLen-1,T1>>;
-};
-
-template<   size_t TLen,
-            typename T1
-            > struct ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t ,TLen>,T1,std::enable_if_t< !is_tuple<T1>::value && !std::is_reference_v<T1> > >
-{
-    using type = std::tuple<void>;
-};
 
 
-template<   size_t TLen,
-            typename T1,
-            typename... Rest
-            > struct ReferenceTupleElementHandlerImplRoot<  std::integral_constant<size_t ,TLen>,
-                                                            std::tuple<T1,Rest...>,
-                                                            std::enable_if_t< sizeof...(Rest)==0 > >
-{
-    using type = ReferenceTupleElementHandlerImplRoot< std::integral_constant<size_t ,TLen>,T1,void >::type;
-};
+template<typename T> struct func_traits2;
 
-template<   size_t TLen,
-            typename T1,
-            typename... Rest
-            > struct ReferenceTupleElementHandlerImplRoot<  std::integral_constant<size_t ,TLen>,
-                                                            std::tuple<T1,Rest...>,
-                                                            std::enable_if_t< std::is_reference_v<T1> && (sizeof...(Rest) > 0) > >
-{
-    using additional_type=ReferenceTupleElementHandlerImplRoot<   std::integral_constant<size_t , TLen>,
-                                                                    std::tuple<Rest...>,
-                                                                    void >::type;
-    using this_element_type = element_holder<TLen - 1 - sizeof...(Rest),T1>;                                                                    
-    using type = decltype(std::tuple_cat(std::declval<std::tuple<this_element_type>>(),std::declval<additional_type>()));// std::tuple<this_element_type,additional_type>  ;
-};
-
-template<   size_t TLen,
-            typename T1,
-            typename... Rest
-            > struct ReferenceTupleElementHandlerImplRoot<  std::integral_constant<size_t ,TLen>,
-                                                            std::tuple<T1,Rest...>,
-                                                            std::enable_if_t< !std::is_reference_v<T1>  && (sizeof...(Rest) > 0) > >
-{
-//    using type = element_holder<TLen - 1 - sizeof...(Rest),T1>;
-    using type = ReferenceTupleElementHandlerImplRoot<   std::integral_constant<size_t , TLen>,
-                                                                    std::tuple<Rest...>,
-                                                                    void >::type  ;
-};
-
-
-
-
-template<typename T1,typename...T > struct ResultTraitsImpl;
-
-template<typename Res> struct ResultTraitsImpl<Res ,std::enable_if_t< !std::is_reference_v<Res> > >
-{
-    typedef Res type;
-};
-
-template<typename... Args> struct pack_has_references
-{
-    static constexpr bool value {(std::is_lvalue_reference_v<Args> || ...)};
-};
-
-
-template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::enable_if_t< std::is_void_v<Res> && pack_has_references<Args...>::value >,Args...  >
-{
-    typedef std::tuple<Args...>  type;
-};
-
-template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::enable_if_t<  !pack_has_references<Args...>::value >,Args...  >
-{
-    typedef Res  type;
-};
-
-template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::enable_if_t< !std::is_void_v<Res> && pack_has_references<Args...>::value >,Args...  >
-{
-    typedef std::tuple<Res,Args...>  type;
-};
-
-template<typename T,typename...T1> struct ResultTraits : ResultTraitsImpl<T,void,T1...>
+template<typename Res,typename...Args> struct func_traits2<Res(*)(Args...)> : ResultTraits<Res,Args...>
 {
 
 };
@@ -271,16 +99,8 @@ template<typename Arg> void PrintType()
 }
 
 
-template<typename T> struct func_traits2;
-
-template<typename Res,typename...Args> struct func_traits2<Res(*)(Args...)> : ResultTraits<Res,Args...>
-{
-
-};
-
-
 TEST_F(binding_test, freefunc_void_single_ref_arg) {
-    using func_args_types1 = func_traits2<decltype(&dummy_int_refarg)>::type;
+    using func_args_types1 = func_traits<decltype(&dummy_int_refarg)>::type;
     using func_args_types2 = func_traits2<decltype(&dummy_void_refarg)>::type;
     using func_args_types3 = func_traits2<decltype(& dummy_multi_arg_wref)>::type;
  
