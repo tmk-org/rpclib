@@ -103,7 +103,8 @@ TEST_F(binding_test, freefunc_void_single_ref_arg) {
     PrintType<func_args_types2>();
     PrintType<func_args_types3>();
     PrintType<func_args_types4>();
-
+    PrintType<rpc::detail::has_ref_args<decltype(&dummy_void_multiarg)> >();
+    PrintType<rpc::detail::has_ref_args<decltype(&dummy_multi_arg_wref)> >();
     EXPECT_NO_THROW(
         ref_arg_func();
     );

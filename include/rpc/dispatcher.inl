@@ -2,11 +2,32 @@
 namespace rpc {
 namespace detail {
 
-template <typename F> void dispatcher::bind(std::string const &name, F func) {
+template <typename F > void dispatcher::bind(std::string const &name, F func) {
+    enforce_unique_name(name);
+    if constexpr (!has_ref_args<F>::value)
+    {
+        bind(name, func, typename detail::func_kind_info<F>::result_kind(),
+            typename detail::func_kind_info<F>::args_kind());
+    }
+    else
+    {
+        bind(name, func, typename detail::func_kind_info<F>::result_kind(),
+            typename detail::func_kind_info<F>::args_kind(),detail::tags::refs_args{});
+    }
+    
+}
+/*
+template <typename F > std::enable_if_t<!has_ref_args<F>::value,void> dispatcher::bind(std::string const &name, F func) {
     enforce_unique_name(name);
     bind(name, func, typename detail::func_kind_info<F>::result_kind(),
          typename detail::func_kind_info<F>::args_kind());
-}
+}*/
+/*
+template <typename F > void dispatcher::bind(std::string const &name, std::enable_if_t<!has_ref_args<F>::value,F > func) {
+    enforce_unique_name(name);
+    bind(name, func, typename detail::func_kind_info<F>::result_kind(),
+         typename detail::func_kind_info<F>::args_kind());
+}*/
 
 template <typename F>
 void dispatcher::bind(std::string const &name, F func,
@@ -75,5 +96,24 @@ void dispatcher::bind(std::string const &name, F func,
         return rpc::detail::make_unique<RPCLIB_MSGPACK::object_handle>(result, std::move(z));
     }));
 }
+
+template <typename F>
+    void dispatcher::bind(std::string const &name, F func,
+              detail::tags::void_result const &,
+              detail::tags::nonzero_arg const &,
+              detail::tags::refs_args const&)
+{
+    bind(name,func,detail::tags::void_result{},detail::tags::nonzero_arg{},detail::tags::refs_args{});
+}
+
+template <typename F>
+    void bind(std::string const &name, F func,
+              detail::tags::nonvoid_result const &,
+              detail::tags::nonzero_arg const &,
+              detail::tags::refs_args const&)
+{
+    bind(name,func,detail::tags::nonvoid_result{},detail::tags::nonzero_arg{},detail::tags::refs_args{});
+}
+
 }
 }

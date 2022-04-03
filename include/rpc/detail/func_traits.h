@@ -21,6 +21,8 @@ struct zero_arg {};
 struct nonzero_arg {};
 struct void_result {};
 struct nonvoid_result {};
+struct no_refs_args {};
+struct refs_args {};
 
 template <int N> struct arg_count_trait { typedef nonzero_arg type; };
 
@@ -29,6 +31,8 @@ template <> struct arg_count_trait<0> { typedef zero_arg type; };
 template <typename T> struct result_trait { typedef nonvoid_result type; };
 
 template <> struct result_trait<void> { typedef void_result type; };
+
+
 }
 
 //! \brief Provides a small function traits implementation that
@@ -255,6 +259,9 @@ using is_single_arg =
 
 template <typename F>
 using is_void_result = std::is_void<typename func_traits<F>::result_type>;
+
+template <typename F>
+using has_ref_args = invoke<std::conditional< !std::is_void_v<typename func_traits<F>::refs_args_type> , true_, false_>>;
 }
 }
 
