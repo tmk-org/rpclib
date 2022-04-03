@@ -30,6 +30,11 @@ int dummy_int_refarg(int& p)
     return p;
 }
 
+int dummy_multi_arg_wref(int& ,int ,std::string&,float,void*&)
+{
+    return 1;
+}
+
 class binding_test : public testing::Test {
 public:
     binding_test() : dispatcher() {
@@ -91,14 +96,82 @@ template<   typename T,
             typename... T2
             > struct ReferenceTupleElementHandlerImplRoot;
 
+template<typename T1,typename...T2> struct TupleVoidRemover;
+
+template<typename T1,typename...T2> 
+    struct TupleVoidRemover<    std::tuple<T1,T2...>,
+                                std::enable_if_t<   (std::tuple_size_v< std::tuple<T1,T2...> > == 1) 
+                                                    && (!std::is_void_v<T1>)
+                                                > 
+                            >
+{
+    using type=std::tuple<T1>;
+};
+
+template<typename T1,typename...T2> 
+    struct TupleVoidRemover<    std::tuple<T1,T2...>,
+                                std::enable_if_t<   (std::tuple_size_v< std::tuple<T1,T2...> > == 1) 
+                                                    && (std::is_void_v<T1>)
+                                                > 
+                            >
+{
+    using type=void;
+};
+
+template<typename T1,typename...T2,size_t...idxs> 
+    struct TupleVoidRemover<    std::tuple<T1,T2...>,
+                                std::index_sequence<idxs...> 
+                            >
+{
+    using type = std::tuple< std::tuple_element_t<idxs,std::tuple<T1,T2...> >... >;
+};
+
+template<typename T1,typename...T2> 
+    struct TupleVoidRemover<    std::tuple<T1,T2...>,
+                                std::enable_if_t< (std::tuple_size_v< std::tuple<T1,T2...> > > 1) 
+                                                && std::is_void_v<
+                                                                std::tuple_element_t< 
+                                                                                    std::tuple_size_v< 
+                                                                                                    std::tuple<T1,T2...> 
+                                                                                                    > - 1, 
+                                                                                    std::tuple<T1,T2...> 
+                                                                                    > 
+                                                                > 
+                                                > 
+                            >
+{
+    using tuple_type = std::tuple<T1,T2...>;
+    using type= TupleVoidRemover<tuple_type,std::make_index_sequence< std::tuple_size_v< tuple_type > -1 > >::type;
+};
+
+template<typename T1,typename...T2> 
+    struct TupleVoidRemover<    std::tuple<T1,T2...>,
+                                std::enable_if_t< 
+                                                (std::tuple_size_v< std::tuple<T1,T2...> > > 1) 
+                                                &&  !std::is_void_v<
+                                                                    std::tuple_element_t< 
+                                                                                    std::tuple_size_v< std::tuple<T1,T2...> > - 1, 
+                                                                                    std::tuple<T1,T2...> 
+                                                                                        > 
+                                                                    > 
+                                                    
+                                                > 
+                            >
+{
+    using type=std::tuple<T1,T2...>;
+};
+
 template<typename Head,typename... Rest> struct ReferenceTupleElementHandler<std::tuple<Head,Rest...> >
 {
-    using type = ReferenceTupleElementHandlerImplRoot<
+    using preliminary_type = ReferenceTupleElementHandlerImplRoot<
                                                 std::integral_constant<size_t ,1+sizeof...(Rest)>,
                                                 std::tuple<Head,Rest...>,
                                                 void
                                             >::type;
-    //using type = element_holder<1+sizeof...(Rest),Head>;
+    using type = TupleVoidRemover<
+                                preliminary_type,
+                                void
+                                >::type;
 };
 
 template<typename T> struct is_tuple : std::false_type{};
@@ -118,25 +191,15 @@ template<   size_t TLen,
     using type = std::tuple<void>;
 };
 
-//template<   size_t TLen,
-//            typename T1
-//            > struct ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t ,TLen>,std::tuple<T1>,void >
-//{
-//    using type = ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t ,TLen>,T1,void >::type;
-//};
 
 template<   size_t TLen,
             typename T1,
             typename... Rest
             > struct ReferenceTupleElementHandlerImplRoot<  std::integral_constant<size_t ,TLen>,
                                                             std::tuple<T1,Rest...>,
-                                                            std::enable_if_t< sizeof...(Rest)==0/*std::is_reference_v<T1>*/ > >
+                                                            std::enable_if_t< sizeof...(Rest)==0 > >
 {
-    using type = ReferenceTupleElementHandlerImplRoot< std::integral_constant<size_t ,TLen>,T1,void >::type;//element_holder<TLen - 1 - sizeof...(Rest),T1>;
-    //using type = std::tuple<element_holder<TLen - 1 - sizeof...(Rest),T1>,
-    //                        ReferenceTupleElementHandlerImplRoot<   std::integral_constant<size_t , TLen>,
-    //                                                                std::tuple<Rest...>,
-    //                                                                void >::type > ;
+    using type = ReferenceTupleElementHandlerImplRoot< std::integral_constant<size_t ,TLen>,T1,void >::type;
 };
 
 template<   size_t TLen,
@@ -146,7 +209,6 @@ template<   size_t TLen,
                                                             std::tuple<T1,Rest...>,
                                                             std::enable_if_t< std::is_reference_v<T1> && (sizeof...(Rest) > 0) > >
 {
-    //using type = element_holder<TLen - 1 - sizeof...(Rest),T1>;
     using additional_type=ReferenceTupleElementHandlerImplRoot<   std::integral_constant<size_t , TLen>,
                                                                     std::tuple<Rest...>,
                                                                     void >::type;
@@ -167,81 +229,7 @@ template<   size_t TLen,
                                                                     void >::type  ;
 };
 
-//template<   typename T1,
-//            typename... T2
-//        > struct TupleFlattener;
-//
-//template<typename T1,typename T2> struct TupleFlattener<std::tuple<T1,std::enable_if_t< !is_tuple<T2>::value , T2 > > >
-//
-//template<   typename Head,
-//            typename HeadNext,
-//            typename... Rest
-//        > struct TupleFlattener<std::tuple<Head,std::tuple<HeadNext,Rest...> > >
-//{
-//    using type = std::tuple
-//}
 
-//template<   typename Head,
-//            typename Enable,
-//            typename... Rest,
-//            size_t TupleLength
-//            > struct ReferenceTupleElementHandlerImpl<
-//                                    std::tuple<Head,Rest...>,
-//                                    void,//std::enable_if_t< !std::is_lvalue_reference_v<Head> >,
-//                                    std::integral_constant<size_t,TupleLength> >
-//{
-//    using type= element_holder<TupleLength,std::tuple<Head,Rest...>>;
-//                /*ReferenceTupleElementHandlerImpl<
-//                                            void,
-//                                            std::tuple<Rest...>,
-//                                            std::integral_constant<size_t,TupleLength> 
-//                                            >::type;*/
-//};
-
-
-
-//template<   
-//            typename Head,
-//            typename Enable,
-//            typename... Rest,
-//            size_t TupleLength
-//            > struct ReferenceTupleElementHandlerImpl<
-//                                    
-//                                    std::tuple<Head,Rest...>,
-//                                    std::enable_if_t< std::is_lvalue_reference_v<Head> >,
-//                                    std::integral_constant<size_t,TupleLength> >
-//{
-//    using type= std::tuple<Head,Rest...>;/*std::tuple< element_holder<TupleLength-1-sizeof...(Rest)>,
-//                            ReferenceTupleElementHandlerImpl<
-//                                            void,
-//                                            std::tuple<Rest...>,
-//                                            std::integral_constant<size_t,TupleLength> 
-//                                            >::type
-//                            >;*/
-//};
-/*
-template<   typename Enable, 
-            typename Head,
-            size_t TupleLength> struct 
-        ReferenceTupleElementHandlerImpl<
-                                    void,
-                                    Head&,
-                                    std::integral_constant<size_t,TupleLength> >
-{
-    using type=element_holder<TupleLength - 1 ,Head>;
-};
-
-template<   typename Enable,
-            typename Head,
-            size_t TupleLength> struct 
-        ReferenceTupleElementHandlerImpl<
-                                    std::enable_if_t<!std::is_reference_v<Head> >,
-                                    Head,
-                                    std::integral_constant<size_t,TupleLength> >
-{
-    using type=void;
-};
-*/
 
 
 template<typename T1,typename...T > struct ResultTraitsImpl;
@@ -272,15 +260,16 @@ template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::ena
     typedef std::tuple<Res,Args...>  type;
 };
 
+template<typename T,typename...T1> struct ResultTraits : ResultTraitsImpl<T,void,T1...>
+{
+
+};
+
 template<typename Arg> void PrintType()
 {
     printf("%s\n",__PRETTY_FUNCTION__);
 }
 
-template<typename T,typename...T1> struct ResultTraits : ResultTraitsImpl<T,void,T1...>
-{
-
-};
 
 template<typename T> struct func_traits2;
 
@@ -293,26 +282,17 @@ template<typename Res,typename...Args> struct func_traits2<Res(*)(Args...)> : Re
 TEST_F(binding_test, freefunc_void_single_ref_arg) {
     using func_args_types1 = func_traits2<decltype(&dummy_int_refarg)>::type;
     using func_args_types2 = func_traits2<decltype(&dummy_void_refarg)>::type;
-    using tuple_handler1 = ReferenceTupleElementHandler< func_args_types1 >::type;
-    using tuple_handler2 = ReferenceTupleElementHandler< func_args_types2 >::type;
-    //using func_args_types_handler = ReferenceTupleElementHandlerImplRoot< std::integral_constant<size_t,std::tuple_size_v<func_args_types1>>,func_args_types1,void>::type;
-    using tuple_type_wref_2 = std::tuple<int&,int>;
-    using tuple_type_woref_2 = std::tuple<std::string,int>;
-    using tuple_type_wref1 = std::tuple<int&>;
-    using tuple_type_woref1 = std::tuple<int>;
+    using func_args_types3 = func_traits2<decltype(& dummy_multi_arg_wref)>::type;
+ 
+    PrintType<func_args_types1>();
+    PrintType< ReferenceTupleElementHandler< func_args_types1 >::type>();
 
-    using tuple_type_wref_6 = std::tuple<int&,int,int&,std::string,std::string&,float>;
-    using tuple_type_woref_6 = std::tuple<int,int,int,std::string,std::string,float>;
+    PrintType<func_args_types2>();
+    PrintType< ReferenceTupleElementHandler< func_args_types2 >::type>();
 
-    using func_args_types_handler_w_2 = ReferenceTupleElementHandler< tuple_type_wref_2>::type;
-    //using func_args_types_handler_wo_2 = ReferenceTupleElementHandlerImplRoot< std::integral_constant<size_t,std::tuple_size_v<tuple_type_woref_1>>,tuple_type_woref_1,void>::type;
+    PrintType<func_args_types3>();
+    PrintType< ReferenceTupleElementHandler< func_args_types3 >::type>();
 
-    PrintType< tuple_handler1 >();
-    PrintType< tuple_handler2 >();
-    PrintType< func_args_types1 >();
-    PrintType< ReferenceTupleElementHandler< tuple_type_wref_6>::type >();
-    PrintType< ReferenceTupleElementHandler< tuple_type_woref_6>::type >();
-    //PrintType< func_args_types_handler_wo_2 >();
     EXPECT_NO_THROW(
         ref_arg_func();
     );
