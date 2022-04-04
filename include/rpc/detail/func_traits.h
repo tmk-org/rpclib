@@ -48,9 +48,39 @@ struct func_traits<R (C::*)(Args...) const> : func_traits<R (*)(Args...)> {};
 template<size_t Index,typename T> struct element_holder;
 
 template<size_t Index,typename T> struct element_holder<Index,T&>:std::integral_constant<size_t,Index>
-{};
+{
+    using type = T;
+};
+
+template<typename...T> struct RefArgsProducer;
+
+template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
+{
+    template<typename...T> struct RefArgsPointer;
+    template<typename...TInner> struct RefArgsPointer<std::tuple<TInner...>>
+    {
+        using pointer_idxs= std::index_sequence_for<TInner...>;
+        using input_type = std::tuple<TInner...>;
+        using tuple_type = RefArgsPointer<std::tuple<TInner...>,pointer_idxs>::tuple_type ;
+        using sequence_type = RefArgsPointer<std::tuple<TInner...>,pointer_idxs>::sequence_type ;
+    };
+
+    template<typename...TInner,size_t...idxs> struct RefArgsPointer<std::tuple<TInner...>,std::index_sequence<idxs...> >
+    {
+        using input_type = std::tuple<TInner...>;
+        using tuple_type = std::tuple< 
+                        typename std::tuple_element_t<idxs,
+                                            input_type
+                                            >:: type...
+                                    > ;
+        using sequence_type = std::index_sequence<std::tuple_element_t<idxs,
+                                            input_type
+                                            >:: value...>;
+    };
+};
 
 template<typename Head,typename... Rest> struct ReferenceTupleElementHandler;
+
 
 template<   typename T,
             typename T1,
@@ -226,6 +256,8 @@ template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::ena
 {
     typedef std::tuple<Res,Args...>  type;
 };
+
+
 
 template<typename T,typename...T1> struct ResultTraits : ResultTraitsImpl<T,void,T1...>{};
 template <typename R, typename... Args> struct func_traits<R (*)(Args...)> {

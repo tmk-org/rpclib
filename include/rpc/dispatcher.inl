@@ -97,13 +97,36 @@ void dispatcher::bind(std::string const &name, F func,
     }));
 }
 
+template<typename Arg> void PrintType()
+{
+    printf("%s\n",__PRETTY_FUNCTION__);
+}
+
 template <typename F>
     void dispatcher::bind(std::string const &name, F func,
               detail::tags::void_result const &,
               detail::tags::nonzero_arg const &,
               detail::tags::refs_args const&)
 {
-    bind(name,func,detail::tags::void_result{},detail::tags::nonzero_arg{},detail::tags::refs_args{});
+    using detail::func_traits;
+    using args_type = typename func_traits<F>::args_type;
+    using ref_args_type = typename func_traits<F>::refs_args_type;
+    enforce_unique_name(name);
+    funcs_.insert(
+        std::make_pair(name, [func, name](RPCLIB_MSGPACK::object const &args) {
+            constexpr int args_count = std::tuple_size<args_type>::value;
+            enforce_arg_count(name, args_count, args.via.array.size);
+            args_type args_real;
+            args.convert(args_real);
+            detail::call(func, args_real);
+            auto z = rpc::detail::make_unique<RPCLIB_MSGPACK::zone>();
+            PrintType<ref_args_type>();
+            using tuple_index_type =  std::tuple_element_t< 0 , ref_args_type >;
+            PrintType<tuple_index_type >();
+            auto result = RPCLIB_MSGPACK::object(  std::get< tuple_index_type::value >(args_real)  , *z);
+            auto ret_result = rpc::detail::make_unique<RPCLIB_MSGPACK::object_handle>(result, std::move(z));
+            return /*rpc::detail::make_unique<RPCLIB_MSGPACK::object_handle>( ret_result,std::move() )*/ret_result;
+        }));
 }
 
 template <typename F>
@@ -112,7 +135,7 @@ template <typename F>
               detail::tags::nonzero_arg const &,
               detail::tags::refs_args const&)
 {
-    bind(name,func,detail::tags::nonvoid_result{},detail::tags::nonzero_arg{},detail::tags::refs_args{});
+    bind(name,func,detail::tags::nonvoid_result{},detail::tags::nonzero_arg{});
 }
 
 }

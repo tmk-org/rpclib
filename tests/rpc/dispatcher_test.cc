@@ -53,7 +53,7 @@ public:
         const unsigned char raw_msg[] = "\x94\x00\x00\xb4\x64\x75\x6d\x6d\x79\x5f"
                                         "\x76\x6f\x69\x64\x5f\x73\x69\x6e\x67\x6c"
                                         "\x65\x61\x72\x67\x91\x2a";
-        dispatcher.bind("dummy_void_refarg", &dummy_void_refarg);
+        dispatcher.bind("dummy_void_singlearg", &dummy_void_refarg);
         raw_call(raw_msg);
     }
 
@@ -87,24 +87,25 @@ TEST_F(binding_test, freefunc_void_singlearg) {
 
 
 
-template<typename Arg> void PrintType()
-{
-    printf("%s\n",__PRETTY_FUNCTION__);
-}
+
 
 
 TEST_F(binding_test, freefunc_void_single_ref_arg) {
-    using func_args_types1 = rpc::detail::func_traits<decltype(&dummy_int_refarg)>::refs_args_type;
-    using func_args_types2 = rpc::detail::func_traits<decltype(&dummy_void_refarg)>::refs_args_type;
+    //using func_args_types1 = rpc::detail::func_traits<decltype(&dummy_int_refarg)>::refs_args_type;
+    //using func_args_types2 = rpc::detail::func_traits<decltype(&dummy_void_refarg)>::refs_args_type;
+    using func_args_types3_raw = rpc::detail::func_traits<decltype(& dummy_multi_arg_wref)>::args_type;
     using func_args_types3 = rpc::detail::func_traits<decltype(& dummy_multi_arg_wref)>::refs_args_type;
-    using func_args_types4 = rpc::detail::func_traits<decltype(&dummy_void_multiarg)>::refs_args_type;
-
-    PrintType<func_args_types1>();
-    PrintType<func_args_types2>();
-    PrintType<func_args_types3>();
-    PrintType<func_args_types4>();
-    PrintType<rpc::detail::has_ref_args<decltype(&dummy_void_multiarg)> >();
-    PrintType<rpc::detail::has_ref_args<decltype(&dummy_multi_arg_wref)> >();
+    //using func_args_types4 = rpc::detail::func_traits<decltype(&dummy_void_multiarg)>::refs_args_type;
+//
+    //rpc::detail::PrintType<func_args_types1>();
+    //rpc::detail::PrintType<func_args_types2>();
+    rpc::detail::PrintType<func_args_types3>();
+    rpc::detail::PrintType<func_args_types3_raw>();
+    rpc::detail::PrintType<rpc::detail::RefArgsProducer<func_args_types3_raw>::template RefArgsPointer<func_args_types3>::tuple_type>();
+    rpc::detail::PrintType<rpc::detail::RefArgsProducer<func_args_types3_raw>::template RefArgsPointer<func_args_types3>::sequence_type>();
+    //rpc::detail::PrintType<func_args_types4>();
+    //rpc::detail::PrintType<rpc::detail::has_ref_args<decltype(&dummy_void_multiarg)> >();
+    //rpc::detail::PrintType<rpc::detail::has_ref_args<decltype(&dummy_multi_arg_wref)> >();
     EXPECT_NO_THROW(
         ref_arg_func();
     );
