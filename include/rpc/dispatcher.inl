@@ -111,6 +111,9 @@ template <typename F>
     using detail::func_traits;
     using args_type = typename func_traits<F>::args_type;
     using ref_args_type = typename func_traits<F>::refs_args_type;
+    using retriver = RefArgsProducer<args_type>::template RefArgsPointer<ref_args_type>;
+    using ref_args_type_tuple = typename retriever::tuple_type;
+    using ref_args_type_tuple_seq = typename retriever::sequence_type;
     enforce_unique_name(name);
     funcs_.insert(
         std::make_pair(name, [func, name](RPCLIB_MSGPACK::object const &args) {
@@ -120,6 +123,7 @@ template <typename F>
             args.convert(args_real);
             detail::call(func, args_real);
             auto z = rpc::detail::make_unique<RPCLIB_MSGPACK::zone>();
+            
             PrintType<ref_args_type>();
             using tuple_index_type =  std::tuple_element_t< 0 , ref_args_type >;
             PrintType<tuple_index_type >();

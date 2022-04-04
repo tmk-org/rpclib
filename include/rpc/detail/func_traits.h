@@ -63,6 +63,10 @@ template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
         using input_type = std::tuple<TInner...>;
         using tuple_type = RefArgsPointer<std::tuple<TInner...>,pointer_idxs>::tuple_type ;
         using sequence_type = RefArgsPointer<std::tuple<TInner...>,pointer_idxs>::sequence_type ;
+        static tuple_type GetReffedValuesAsTuple(input_type&& input)
+        {
+            
+        }
     };
 
     template<typename...TInner,size_t...idxs> struct RefArgsPointer<std::tuple<TInner...>,std::index_sequence<idxs...> >
@@ -77,7 +81,11 @@ template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
                                             input_type
                                             >:: value...>;
     };
+
+
 };
+
+template
 
 template<typename Head,typename... Rest> struct ReferenceTupleElementHandler;
 
