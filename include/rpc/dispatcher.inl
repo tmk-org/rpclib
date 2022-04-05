@@ -111,7 +111,8 @@ template <typename F>
     using detail::func_traits;
     using args_type = typename func_traits<F>::args_type;
     using ref_args_type = typename func_traits<F>::refs_args_type;
-    using retriver = RefArgsProducer<args_type>::template RefArgsPointer<ref_args_type>;
+    using producer = RefArgsProducer<args_type>;
+    using retriever = producer::template RefArgsPointer<ref_args_type>;
     using ref_args_type_tuple = typename retriever::tuple_type;
     using ref_args_type_tuple_seq = typename retriever::sequence_type;
     enforce_unique_name(name);
@@ -123,13 +124,8 @@ template <typename F>
             args.convert(args_real);
             detail::call(func, args_real);
             auto z = rpc::detail::make_unique<RPCLIB_MSGPACK::zone>();
-            
-            PrintType<ref_args_type>();
-            using tuple_index_type =  std::tuple_element_t< 0 , ref_args_type >;
-            PrintType<tuple_index_type >();
-            auto result = RPCLIB_MSGPACK::object(  std::get< tuple_index_type::value >(args_real)  , *z);
-            auto ret_result = rpc::detail::make_unique<RPCLIB_MSGPACK::object_handle>(result, std::move(z));
-            return /*rpc::detail::make_unique<RPCLIB_MSGPACK::object_handle>( ret_result,std::move() )*/ret_result;
+            auto result = RPCLIB_MSGPACK::object( producer::template ReprojectTuple<ref_args_type_tuple,ref_args_type_tuple_seq>::Reproject(std::move(args_real))   , *z);
+            return rpc::detail::make_unique<RPCLIB_MSGPACK::object_handle>(result, std::move(z));
         }));
 }
 

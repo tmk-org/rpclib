@@ -52,10 +52,30 @@ template<size_t Index,typename T> struct element_holder<Index,T&>:std::integral_
     using type = T;
 };
 
+
+
 template<typename...T> struct RefArgsProducer;
 
 template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
 {
+    template<typename...T> struct ReprojectTuple;
+
+    template<typename...TInner,size_t...idxs> struct ReprojectTuple<std::tuple<TInner...>,std::index_sequence<idxs...> >
+    {
+        static std::tuple<TInner...> Reproject(std::tuple<Touter...>&& outer)
+        {
+            return ReprojectImpl(std::move(std::get<idxs>(outer))...);
+        }
+
+        static std::tuple<TInner...> ReprojectImpl(Touter&&... outer)
+        {
+            return std::make_tuple(outer...);
+        }
+    };
+
+    
+
+
     template<typename...T> struct RefArgsPointer;
     template<typename...TInner> struct RefArgsPointer<std::tuple<TInner...>>
     {
@@ -63,9 +83,9 @@ template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
         using input_type = std::tuple<TInner...>;
         using tuple_type = RefArgsPointer<std::tuple<TInner...>,pointer_idxs>::tuple_type ;
         using sequence_type = RefArgsPointer<std::tuple<TInner...>,pointer_idxs>::sequence_type ;
-        static tuple_type GetReffedValuesAsTuple(input_type&& input)
+        static tuple_type GetReffedValuesAsTuple(std::tuple<Touter&&...> input)
         {
-            
+            return ReprojectTuple<tuple_type,sequence_type>::Reproject(input);            
         }
     };
 
@@ -77,15 +97,23 @@ template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
                                             input_type
                                             >:: type...
                                     > ;
+        using tuple_refs_type = std::tuple< 
+                        typename std::tuple_element_t<idxs,
+                                            input_type
+                                            >:: type&...
+                                    >;
+        
         using sequence_type = std::index_sequence<std::tuple_element_t<idxs,
                                             input_type
                                             >:: value...>;
+
+        
     };
 
+    
 
 };
 
-template
 
 template<typename Head,typename... Rest> struct ReferenceTupleElementHandler;
 
