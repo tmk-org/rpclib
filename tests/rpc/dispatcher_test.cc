@@ -35,6 +35,11 @@ int dummy_multi_arg_wref(int& ,int ,std::string&,float,void*&)
     return 1;
 }
 
+void dummy_void_double_args_ref(int,int& n)
+{
+    n *= 10;
+}
+
 class binding_test : public testing::Test {
 public:
     binding_test() : dispatcher() {
@@ -57,6 +62,15 @@ public:
         raw_call(raw_msg);
     }
 
+    void ref_double_arg_func()
+    {
+        const unsigned char raw_msg[] = "\x94\x00\x00\xb3\x64\x75\x6d\x6d\x79\x5f"
+                                "\x76\x6f\x69\x64\x5f\x6d\x75\x6c\x74\x69"
+                                "\x61\x72\x67\x92\xcd\x01\x6b\x0c";
+        dispatcher.bind("dummy_void_multiarg", &dummy_void_double_args_ref);
+        raw_call(raw_msg);
+        
+    }
 protected:
     rpc::detail::dispatcher dispatcher;
 };
@@ -108,6 +122,7 @@ TEST_F(binding_test, freefunc_void_single_ref_arg) {
     //rpc::detail::PrintType<rpc::detail::has_ref_args<decltype(&dummy_multi_arg_wref)> >();
     EXPECT_NO_THROW(
         ref_arg_func();
+        ref_double_arg_func();
     );
     
 }

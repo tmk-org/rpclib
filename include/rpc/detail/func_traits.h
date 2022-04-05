@@ -64,12 +64,7 @@ template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
     {
         static std::tuple<TInner...> Reproject(std::tuple<Touter...>&& outer)
         {
-            return ReprojectImpl(std::move(std::get<idxs>(outer))...);
-        }
-
-        static std::tuple<TInner...> ReprojectImpl(Touter&&... outer)
-        {
-            return std::make_tuple(outer...);
+            return std::make_tuple(std::move(std::get<idxs>(outer))...);
         }
     };
 
