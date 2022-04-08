@@ -3,7 +3,20 @@
 namespace rpc {
 
 template<typename...T> struct RefArgsHandlerClientSide;
-
+template<typename...T,size_t...idxs> struct RefArgsHandlerClientSide<std::tuple<T...>,std::index_sequence<idxs...>>
+{
+    template<   typename... Args> 
+    static RPCLIB_MSGPACK::object_handle HandleRefArgs(std::future<RPCLIB_MSGPACK::object_handle> future,Args&...args)
+    {
+        using Producer=detail::RefArgsProducer<std::decay_t<Args>...>;
+        auto ret_object= future.get();
+        auto object=ret_object.get();
+        auto rv_obj = std::tuple<std::decay_t<T>...>{};
+        //ret_value_type rv_obj={};
+        object.convert(rv_obj);
+        return ret_object;
+    }
+};
 
 template<   typename... Args,
             typename ref_pointer_tuple,
@@ -11,7 +24,7 @@ template<   typename... Args,
 RPCLIB_MSGPACK::object_handle HandleRefArgs(std::future<RPCLIB_MSGPACK::object_handle> future,Args&...args)
 {
     auto ret_object= future.get();
-    ret_object.
+    return ret_object;
 }
 
 
@@ -29,7 +42,16 @@ RPCLIB_MSGPACK::object_handle client::call( std::string const &func_name,
     }
     if constexpr(detail::pack_has_references<Args...>::value)
     {
-        return HandleRefArgs(std::move(future),std::ref(args)...);
+        using merged_args_type = detail::ResultTraits<void,Args...>::type;
+        using ref_args_type = detail::ReferenceTupleElementHandler< merged_args_type > ::type;
+        using args_type = std::tuple<std::decay_t<Args>...>;
+        using producer = detail::RefArgsProducer<args_type>;
+        using retriever = producer::template RefArgsPointer<ref_args_type>;
+        using ref_args_type_tuple = typename retriever::tuple_type;
+        using ref_args_type_tuple_seq = typename retriever::sequence_type;
+        return RefArgsHandlerClientSide<ref_args_type_tuple,ref_args_type_tuple_seq>::
+            template HandleRefArgs(std::move(future),/*std::ref(*/args/*)*/...);
+        //return HandleRefArgs(std::move(future),std::ref(args)...);
     }
     return future.get();
 }

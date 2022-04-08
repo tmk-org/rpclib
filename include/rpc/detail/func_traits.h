@@ -66,6 +66,23 @@ template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
         {
             return std::make_tuple(std::move(std::get<idxs>(outer))...);
         }
+
+        static void ReprojectBack(std::tuple<std::ref<std::decay_t<Touter>>...> outerTuple,std::tuple<TInner...>&& inner)
+        {
+            outer_loop_seq= std::index_sequence_for<TInner...>;
+            //std::get< idxs...>(outerTuple) = 
+            ReprojectBackImpl<std::array<size_t>>
+        }
+
+        template<typename...T> struct ReprojectBackImpl;
+        template<typename Arr,typename...TOuter,size_t...outerIdxs> struct ReprojectBackImpl<std::array<size_t,sizeof...(TInner)>,std::tuple<TOuter...>,std::index_sequence<outerIdxs...>>
+        {
+            static void ReprojectBack(std::tuple<std::ref<std::decay_t<Touter>>...>& outerTuple,std::tuple<TInner...>&& inner)
+            {
+                
+                std::get< Arr[outerIdxs]>(outerTuple)... = std::get<outerIdxs>(inner)...; 
+            }
+        }
     };
 
     

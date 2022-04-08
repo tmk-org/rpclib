@@ -43,7 +43,7 @@ public:
         rpc::client client("127.0.0.1", test_port);
         int k = 5;
         int& s = k;
-        client.call("dummy_void_single_refarg", s);
+        client.call<int&>("dummy_void_single_refarg", s);
         (void)s;
     }
 protected:
