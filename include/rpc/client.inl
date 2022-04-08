@@ -1,8 +1,24 @@
+#include "rpc/detail/func_tools.h"
+#include "rpc/detail/func_traits.h"
 namespace rpc {
 
+template<typename...T> struct RefArgsHandlerClientSide;
+
+
+template<   typename... Args,
+            typename ref_pointer_tuple,
+            typename get_idxs_seq> 
+RPCLIB_MSGPACK::object_handle HandleRefArgs(std::future<RPCLIB_MSGPACK::object_handle> future,Args&...args)
+{
+    auto ret_object= future.get();
+    ret_object.
+}
+
+
+
 template <typename... Args>
-RPCLIB_MSGPACK::object_handle client::call(std::string const &func_name,
-                                    Args... args) {
+RPCLIB_MSGPACK::object_handle client::call( std::string const &func_name,
+                                            Args... args) {
     RPCLIB_CREATE_LOG_CHANNEL(client)
     auto future = async_call(func_name, std::forward<Args>(args)...);
     if (auto timeout = get_timeout()) {
@@ -11,7 +27,10 @@ RPCLIB_MSGPACK::object_handle client::call(std::string const &func_name,
             throw_timeout(func_name);
         }
     }
-
+    if constexpr(detail::pack_has_references<Args...>::value)
+    {
+        return HandleRefArgs(std::move(future),std::ref(args)...);
+    }
     return future.get();
 }
 
