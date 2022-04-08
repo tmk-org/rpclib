@@ -41,12 +41,23 @@ struct IDummy {
     virtual void dummy_void_zeroarg() = 0;
     virtual void dummy_void_singlearg(int x) = 0;
     virtual void dummy_void_multiarg(int x, int y) = 0;
+    virtual void dummy_void_single_refarg(int& x) = 0;
+    virtual void dummy_void_double_refarg(int y,int& x) = 0;
 };
 
 struct MockDummy : IDummy {
     MOCK_METHOD0(dummy_void_zeroarg, void());
     MOCK_METHOD1(dummy_void_singlearg, void(int));
     MOCK_METHOD2(dummy_void_multiarg, void(int, int));
+    void dummy_void_single_refarg(int& x)override
+    {
+        x *= 10;
+    }
+    
+    void dummy_void_double_refarg(int y,int& x) override
+    {
+        x *= y;
+    }
 };
 
 inline std::string get_blob(std::size_t size) {
