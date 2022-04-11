@@ -56,10 +56,17 @@ template<size_t Index,typename T> struct element_holder<Index,T&>:std::integral_
 
 template<typename...T> struct RefArgsProducer;
 
+template<typename...T> struct IdxSequenceToTupleOfConstants;
+
+template<size_t...idxs> struct IdxSequenceToTupleOfConstants<std::index_sequence<idxs...> >
+{
+    using values = std::tuple<std::integral_constant<size_t,idxs>...>;
+};
+
 template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
 {
     template<typename...T> struct ReprojectTuple;
-
+    using outerRefTupleType= std::tuple<Touter&...>;
     template<typename...TInner,size_t...idxs> struct ReprojectTuple<std::tuple<TInner...>,std::index_sequence<idxs...> >
     {
         static std::tuple<TInner...> Reproject(std::tuple<Touter...>&& outer)
@@ -67,22 +74,37 @@ template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
             return std::make_tuple(std::move(std::get<idxs>(outer))...);
         }
 
-        static void ReprojectBack(std::tuple<std::ref<std::decay_t<Touter>>...> outerTuple,std::tuple<TInner...>&& inner)
+        static void ReprojectBack(/*std::tuple<std::ref<std::decay_t<Touter>>...>*/ 
+            outerRefTupleType outerTuple,std::tuple<TInner...>&& inner)
         {
-            outer_loop_seq= std::index_sequence_for<TInner...>;
-            //std::get< idxs...>(outerTuple) = 
-            ReprojectBackImpl<std::array<size_t>>
+            using InnerIdxsConstants = std::tuple<std::integral_constant<size_t,idxs>... >;
+            using InnerLoopIndexes = IdxSequenceToTupleOfConstants<std::index_sequence_for<TInner...>>::values;
+            
+            std::apply(
+                //template<auto...LamIdxsType>
+                [&](auto&&...lamidxs)
+                {
+                    ((  std::get< std::tuple_element< /*lamidxs::value*/0, InnerIdxsConstants>::type::value >(outerTuple)=
+                        std::get< decltype(std::decay_t<lamidxs>)::value >(inner) ),...);
+                },
+                InnerLoopIndexes{});
+            //ReprojectBackImpl<std::array<size_t>>
         }
 
-        template<typename...T> struct ReprojectBackImpl;
-        template<typename Arr,typename...TOuter,size_t...outerIdxs> struct ReprojectBackImpl<std::array<size_t,sizeof...(TInner)>,std::tuple<TOuter...>,std::index_sequence<outerIdxs...>>
-        {
-            static void ReprojectBack(std::tuple<std::ref<std::decay_t<Touter>>...>& outerTuple,std::tuple<TInner...>&& inner)
-            {
-                
-                std::get< Arr[outerIdxs]>(outerTuple)... = std::get<outerIdxs>(inner)...; 
-            }
-        }
+        //template<typename...T> struct ReprojectBackImpl;
+        //template<typename Arr,typename...TOuter,size_t...outerIdxs> struct ReprojectBackImpl<std::array<size_t,sizeof...(TInner)>,std::tuple<TOuter...>,std::index_sequence<outerIdxs...>>
+        //{
+        //    using idxsTupleType = std::tuple<std::integral_constant<outerIdxs>...>;
+        //    static void ReprojectBack(std::tuple<std::ref<std::decay_t<Touter>>...>& outerTuple,std::tuple<TInner...>&& inner)
+        //    {
+        //        idxsTupleType idxsTuple{};
+        //        std::apply
+        //        (
+//
+        //        );
+        //        std::get< Arr[outerIdxs]>(outerTuple)... = std::get<outerIdxs>(inner)...; 
+        //    }
+        //}
     };
 
     

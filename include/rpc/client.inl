@@ -3,17 +3,19 @@
 namespace rpc {
 
 template<typename...T> struct RefArgsHandlerClientSide;
-template<typename...T,size_t...idxs> struct RefArgsHandlerClientSide<std::tuple<T...>,std::index_sequence<idxs...>>
+template<typename...TInner,size_t...Inneridxs> struct RefArgsHandlerClientSide<std::tuple<TInner...>,std::index_sequence<Inneridxs...>>
 {
-    template<   typename... Args> 
-    static RPCLIB_MSGPACK::object_handle HandleRefArgs(std::future<RPCLIB_MSGPACK::object_handle> future,Args&...args)
+    template< typename... outerArgs > 
+    static RPCLIB_MSGPACK::object_handle HandleRefArgs(std::future<RPCLIB_MSGPACK::object_handle> future,outerArgs&...args)
     {
-        using Producer=detail::RefArgsProducer<std::decay_t<Args>...>;
+        using Producer=detail::RefArgsProducer<std::tuple<std::decay_t<outerArgs>>...>;
         auto ret_object= future.get();
         auto object=ret_object.get();
-        auto rv_obj = std::tuple<std::decay_t<T>...>{};
+        auto rv_obj = std::tuple<std::decay_t<TInner>...>{};
         //ret_value_type rv_obj={};
         object.convert(rv_obj);
+        Producer::template  ReprojectTuple<std::tuple<TInner...>,std::index_sequence<Inneridxs...> >::
+                            ReprojectBack(std::tie(args...),std::move(rv_obj));
         return ret_object;
     }
 };
