@@ -84,8 +84,9 @@ template<typename...Touter> struct RefArgsProducer<std::tuple<Touter...>>
                 //template<auto...LamIdxsType>
                 [&](auto&&...lamidxs)
                 {
-                    ((  std::get< std::tuple_element< /*lamidxs::value*/0, InnerIdxsConstants>::type::value >(outerTuple)=
-                        std::get< decltype(std::decay_t<lamidxs>)::value >(inner) ),...);
+                    ((  
+                        std::get< std::tuple_element< std::decay_t<decltype(lamidxs)>::value, InnerIdxsConstants>::type::value >(outerTuple)=
+                        std::get< std::decay_t<decltype(lamidxs)>::value >(inner) ),...);
                 },
                 InnerLoopIndexes{});
             //ReprojectBackImpl<std::array<size_t>>
