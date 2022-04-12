@@ -236,6 +236,7 @@ template<typename Head,typename... Rest> struct ReferenceTupleElementHandler<std
                                 >::type;
 };
 
+
 template<> struct ReferenceTupleElementHandler<void >
 {
     
@@ -244,6 +245,20 @@ template<> struct ReferenceTupleElementHandler<void >
 
 template<typename T> struct is_tuple : std::false_type{};
 template<typename... Ts> struct is_tuple< std::tuple<Ts...> > : std::true_type{};
+
+
+template<typename Head,typename enable=std::enable_if_t<!is_tuple<Head>::value > > struct ReferenceTupleElementHandler<Head >
+{
+    using preliminary_type = ReferenceTupleElementHandlerImplRoot<
+                                                std::integral_constant<size_t ,1+sizeof...(Rest)>,
+                                                std::tuple<Head,Rest...>,
+                                                void
+                                            >::type;
+    using type = TupleVoidRemover<
+                                preliminary_type,
+                                void
+                                >::type;
+};
 
 template<   size_t TLen,
             typename T1
@@ -309,7 +324,7 @@ template<typename Res> struct ResultTraitsImpl<Res ,std::enable_if_t< !std::is_r
 
 template<typename... Args> struct pack_has_references
 {
-    static constexpr bool value {(std::is_lvalue_reference_v<Args> || ...)};
+    static constexpr bool value {((std::is_lvalue_reference_v<Args> && !std::is_const_v<Args>) || ...)};
 };
 
 
@@ -337,6 +352,14 @@ template <typename R, typename... Args> struct func_traits<R (*)(Args...)> {
     using refs_args_type = ReferenceTupleElementHandler< merged_args_type > ::type;
     using arg_count = std::integral_constant<std::size_t, sizeof...(Args)>;
     using args_type = std::tuple<typename std::decay<Args>::type...>;
+};
+
+template <typename R> struct func_traits<R (*)()> {
+    using merged_args_type = std::tuple<R>;
+    using result_type = R;
+    using refs_args_type = void;//ReferenceTupleElementHandler< merged_args_type > ::type;
+    using arg_count = std::integral_constant<std::size_t, 0>;
+    using args_type = void;
 };
 
 template <typename T>
