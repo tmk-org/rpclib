@@ -8,7 +8,7 @@ template<typename...TInner,size_t...Inneridxs> struct RefArgsHandlerClientSide<s
     template< typename... outerArgs > 
     static RPCLIB_MSGPACK::object_handle HandleRefArgs(std::future<RPCLIB_MSGPACK::object_handle> future,outerArgs&...args)
     {
-        using Producer=detail::RefArgsProducer<std::tuple<std::decay_t<outerArgs>>...>;
+        using Producer=detail::RefArgsProducer<std::tuple<std::decay_t<outerArgs>... > >;
         auto ret_object= future.get();
         auto object=ret_object.get();
         auto rv_obj = std::tuple<std::decay_t<TInner>...>{};

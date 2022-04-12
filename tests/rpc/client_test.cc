@@ -11,6 +11,13 @@
 
 using namespace rpc::testutils;
 
+void complexFunc(std::string& ss,int p,long& z,float& ff)
+{
+    z=20*p;
+    ff = 1/(z*1.f);
+    ss = "after call p="+std::to_string(p)+",z="+std::to_string(z)+",ff="+std::to_string(ff);
+}
+
 class client_test : public testing::Test {
 public:
     client_test() : s("127.0.0.1", test_port), is_running_(false) {
@@ -29,12 +36,17 @@ public:
             {
                 md.dummy_void_single_refarg(i);
             });
-/*        s.bind(
+        s.bind(
             "dummy_void_double_refarg",
             [this](int i,int& i1)
             {
                 md.dummy_void_double_refarg(i,i1);
-            });*/
+            });
+        s.bind("ref_complex_arg_func",
+                [](std::string& ss,int p,long& z,float& ff)
+                {
+                    complexFunc(ss,p,z,ff);
+                });
         s.async_run();
     }
 
@@ -44,6 +56,27 @@ public:
         int k = 5;
         int& s = k;
         client.call<int&>("dummy_void_single_refarg", s);
+        (void)s;
+    }
+
+    void ref_double_arg_func()
+    {
+        rpc::client client("127.0.0.1", test_port);
+        int i = 5;
+        int s = 10;
+        client.call<int,int&>("dummy_void_double_refarg",i ,std::forward<int&>(s));
+        (void)s;
+    }
+
+
+    void ref_complex_arg_func()
+    {
+        rpc::client client("127.0.0.1", test_port);
+        int i = 5;
+        long s = 0;
+        float ff=3.14159f;
+        std::string ss="before call";
+        client.call<std::string&,int,long&,float&>("ref_complex_arg_func",ss,i,s,ff);
         (void)s;
     }
 protected:
@@ -77,6 +110,8 @@ TEST_F(client_test, notification) {
 
 TEST_F(client_test,double_ref_call){
     ref_arg_func();
+    ref_double_arg_func();
+    ref_complex_arg_func();
 }
 
 //TEST_F(client_test, large_return) {
