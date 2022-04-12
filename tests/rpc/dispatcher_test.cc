@@ -135,6 +135,10 @@ TEST_F(binding_test, freefunc_void_single_ref_arg) {
         printf("%d %d\n",k,i);
         return 0;
     };
+    auto lamtest4=[](const std::string& p)
+    {
+        return p;
+    };
     using functype = decltype(lamtest);
     using lam_args_type_traits  = rpc::detail::func_traits< functype >;
     using merged_args_types     = lam_args_type_traits::merged_args_type;
@@ -160,6 +164,10 @@ TEST_F(binding_test, freefunc_void_single_ref_arg) {
     PRINTTYPE(rpc::detail::func_traits< decltype(lamtest3) >::refs_args_type);
     PRINTTYPE(rpc::detail::func_traits< decltype(lamtest3) >::result_type);
     PRINTTYPE(rpc::detail::has_ref_args< decltype(lamtest3) >);
+
+    PRINTTYPE(rpc::detail::func_traits< decltype(lamtest4) >::refs_args_type);
+    PRINTTYPE(rpc::detail::func_traits< decltype(lamtest4) >::result_type);
+    PRINTTYPE(rpc::detail::has_ref_args< decltype(lamtest4) >);
 
     EXPECT_NO_THROW(
         ref_arg_func();

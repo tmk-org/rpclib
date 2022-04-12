@@ -6,13 +6,13 @@ set(TEST_SOURCES
   testmain.cc
   testutils.h
   rpc/dispatcher_test.cc
-  rpc/client_test.cc
-  rpc/response_test.cc
-  rpc/server_test.cc
-  rpc/this_handler_test.cc
-  rpc/this_session_test.cc
-  rpc/server_session_test.cc
-  rpc/this_server_test.cc
+  #rpc/client_test.cc
+  #rpc/response_test.cc
+  #rpc/server_test.cc
+  #rpc/this_handler_test.cc
+  #rpc/this_session_test.cc
+  #rpc/server_session_test.cc
+  #rpc/this_server_test.cc
   )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
