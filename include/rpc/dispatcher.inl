@@ -97,10 +97,26 @@ void dispatcher::bind(std::string const &name, F func,
     }));
 }
 
-template<typename Arg> void PrintType()
+template<typename Arg> const char* ReturnTypeName()
 {
-    printf("%s\n",__PRETTY_FUNCTION__);
+    const std::string pattern="const char* rpc::detail::ReturnTypeName() [with";
+
+    return __PRETTY_FUNCTION__+pattern.length();
 }
+
+template<typename Arg> void PrintType(const std::string& msg= std::string())
+{
+    if(msg.length() > 0)
+    {
+        printf("\"%s\"%s\n",msg.c_str(),ReturnTypeName<Arg>());
+    }
+    else
+    {
+        printf("%s\n",ReturnTypeName<Arg>());
+    }
+    
+}
+#define PRINTTYPE(x) ::rpc::detail::PrintType<x>(#x)
 
 template <typename F>
     void dispatcher::bind(std::string const &name, F func,

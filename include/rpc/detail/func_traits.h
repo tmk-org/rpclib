@@ -52,7 +52,16 @@ template<size_t Index,typename T> struct element_holder<Index,T&>:std::integral_
     using type = T;
 };
 
+template<typename T> struct is_element_holder : std::bool_constant<false>
+{};
 
+template<size_t Idx,typename T> struct is_element_holder<element_holder<Idx,T> > : std::bool_constant<true>
+{};
+
+template<typename T > constexpr bool is_element_holder_v()
+{
+    return is_element_holder<T>::value;
+}
 
 template<typename...T> struct RefArgsProducer;
 
@@ -246,18 +255,23 @@ template<> struct ReferenceTupleElementHandler<void >
 template<typename T> struct is_tuple : std::false_type{};
 template<typename... Ts> struct is_tuple< std::tuple<Ts...> > : std::true_type{};
 
-
-template<typename Head,typename enable=std::enable_if_t<!is_tuple<Head>::value > > struct ReferenceTupleElementHandler<Head >
+template<typename T> constexpr bool is_tuple_v()
 {
-    using preliminary_type = ReferenceTupleElementHandlerImplRoot<
-                                                std::integral_constant<size_t ,1+sizeof...(Rest)>,
-                                                std::tuple<Head,Rest...>,
-                                                void
-                                            >::type;
-    using type = TupleVoidRemover<
+    return is_tuple<T>::value;
+}
+
+template<typename Head > struct ReferenceTupleElementHandler<Head >:
+    public std::enable_if_t<!is_tuple<Head>::value ,std::bool_constant<true> >
+{
+//    using preliminary_type = ReferenceTupleElementHandlerImplRoot<
+//                                                std::integral_constant<size_t ,1+sizeof...(Rest)>,
+//                                                std::tuple<Head,Rest...>,
+//                                                void
+//                                            >::type;
+    using type = /*TupleVoidRemover<
                                 preliminary_type,
                                 void
-                                >::type;
+                                >::type*/ Head;
 };
 
 template<   size_t TLen,
@@ -386,8 +400,15 @@ using is_single_arg =
 template <typename F>
 using is_void_result = std::is_void<typename func_traits<F>::result_type>;
 
+template<typename...T> struct is_tuple_of_element_holders:std::false_type{};
+
+template<typename...T> struct is_tuple_of_element_holders<std::tuple<T...> >:
+    std::conditional_t< ((is_element_holder<T>::value) && ...),std::true_type,std::false_type>{};
+
 template <typename F>
-using has_ref_args = invoke<std::conditional< !std::is_void_v<typename func_traits<F>::refs_args_type> , true_, false_>>;
+using has_ref_args = invoke<std::conditional<   !std::is_void_v<typename func_traits<F>::refs_args_type>  &&
+                                                !std::is_same_v<typename func_traits<F>::refs_args_type,typename func_traits<F>::result_type> &&
+                                                is_tuple_of_element_holders <typename func_traits<F>::refs_args_type>::value, true_, false_>>;
 }
 }
 
