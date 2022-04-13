@@ -12,7 +12,8 @@ set(TEST_SOURCES
   rpc/this_handler_test.cc
   rpc/this_session_test.cc
   rpc/server_session_test.cc
-  rpc/this_server_test.cc)
+  rpc/this_server_test.cc
+  )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)

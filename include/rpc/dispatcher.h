@@ -48,6 +48,8 @@ public:
               detail::tags::void_result const &,
               detail::tags::nonzero_arg const &);
 
+    
+
     //! \brief Stores a non-void, zero-arg functor with a name.
     template <typename F>
     void bind(std::string const &name, F func,
@@ -60,6 +62,17 @@ public:
               detail::tags::nonvoid_result const &,
               detail::tags::nonzero_arg const &);
 
+    template <typename F>
+    void bind(std::string const &name, F func,
+              detail::tags::void_result const &,
+              detail::tags::nonzero_arg const &,
+              detail::tags::refs_args const&);
+
+    template <typename F>
+    void bind(std::string const &name, F func,
+              detail::tags::nonvoid_result const &,
+              detail::tags::nonzero_arg const &,
+              detail::tags::refs_args const&);
     //! @}
 
     //! \brief Processes a message that contains a call according to

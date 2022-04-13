@@ -11,6 +11,13 @@
 
 using namespace rpc::testutils;
 
+void complexFunc(std::string& ss,int p,long& z,float& ff)
+{
+    z=20*p;
+    ff = 1/(z*1.f);
+    ss = "after call p="+std::to_string(p)+",z="+std::to_string(z)+",ff="+std::to_string(ff);
+}
+
 class client_test : public testing::Test {
 public:
     client_test() : s("127.0.0.1", test_port), is_running_(false) {
@@ -23,9 +30,61 @@ public:
         s.bind("sleep", [](uint64_t ms) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(ms));
         });
+        s.bind(
+            "dummy_void_single_refarg",
+            [this](int& i)
+            {
+                md.dummy_void_single_refarg(i);
+            });
+        s.bind(
+            "dummy_void_double_refarg",
+            [this](int i,int& i1)
+            {
+                md.dummy_void_double_refarg(i,i1);
+            });
+        s.bind("ref_complex_arg_func",
+                [](std::string& ss,int p,long& z,float& ff)
+                {
+                    complexFunc(ss,p,z,ff);
+                });
         s.async_run();
     }
 
+    void ref_arg_func()
+    {
+        rpc::client client("127.0.0.1", test_port);
+        int k = 5;
+        int k_before = k;
+        //int& s = k;
+        client.call<int&>("dummy_void_single_refarg", k);
+        EXPECT_NE(k,k_before);
+        
+    }
+
+    void ref_double_arg_func()
+    {
+        rpc::client client("127.0.0.1", test_port);
+        int i = 5;
+        int s = 10;
+        int s_before = s;
+        client.call<int,int&>("dummy_void_double_refarg",i ,std::forward<int&>(s));
+        EXPECT_NE(s,s_before);
+    }
+
+
+    void ref_complex_arg_func()
+    {
+        rpc::client client("127.0.0.1", test_port);
+        int i = 5;
+        long s = 0;
+        long s_before = s;
+        float ff=3.14159f;
+        float ff_before = ff;
+        std::string ss="before call";
+        std::string ss_before = ss;
+        client.call<std::string&,int,long&,float&>("ref_complex_arg_func",ss,i,s,ff);
+        EXPECT_TRUE((ss!= ss_before) && (s!=s_before) && (ff!=ff_before));
+    }
 protected:
     static RPCLIB_CONSTEXPR uint16_t test_port = rpc::constants::DEFAULT_PORT;
     MockDummy md;
@@ -53,6 +112,12 @@ TEST_F(client_test, notification) {
     client.send("dummy_void_zeroarg");
     client.wait_all_responses();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+TEST_F(client_test,double_ref_call){
+    ref_arg_func();
+    ref_double_arg_func();
+    ref_complex_arg_func();
 }
 
 TEST_F(client_test, large_return) {

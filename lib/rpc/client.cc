@@ -209,15 +209,16 @@ int client::get_next_call_idx() {
 void client::post(std::shared_ptr<RPCLIB_MSGPACK::sbuffer> buffer, int idx,
                   std::string const &func_name,
                   std::shared_ptr<rsp_promise> p) {
-    pimpl->strand_.post([=]() {
+    std::string func_n_local(func_name);
+    pimpl->strand_.post([this,buffer,idx,func_n_local,p]() {
         pimpl->ongoing_calls_.insert(
-            std::make_pair(idx, std::make_pair(func_name, std::move(*p))));
+            std::make_pair(idx, std::make_pair(func_n_local, std::move(*p))));
         pimpl->write(std::move(*buffer));
     });
 }
 
 void client::post(RPCLIB_MSGPACK::sbuffer *buffer) {
-    pimpl->strand_.post([=]() {
+    pimpl->strand_.post([this,buffer]() {
         pimpl->write(std::move(*buffer));
         delete buffer;
     });

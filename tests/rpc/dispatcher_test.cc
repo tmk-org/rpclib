@@ -19,6 +19,26 @@ bool g_dummy_void_multiarg_called;
 void dummy_void_zeroarg() { g_dummy_void_zeroarg_called = true; }
 void dummy_void_singlearg(int) { g_dummy_void_singlearg_called = true; }
 void dummy_void_multiarg(int, int) { g_dummy_void_multiarg_called = true; }
+void dummy_void_refarg(int& p) 
+{ 
+    p++; 
+}
+
+int dummy_int_refarg(int& p) 
+{ 
+    p++; 
+    return p;
+}
+
+int dummy_multi_arg_wref(int& ,int ,std::string&,float,void*&)
+{
+    return 1;
+}
+
+void dummy_void_double_args_ref(int,int& n)
+{
+    n *= 10;
+}
 
 class binding_test : public testing::Test {
 public:
@@ -33,7 +53,24 @@ public:
         msg.write(reinterpret_cast<const char *>(msg_array), sizeof(msg_array));
         dispatcher.dispatch(msg);
     }
+    void ref_arg_func()
+    {
+        const unsigned char raw_msg[] = "\x94\x00\x00\xb4\x64\x75\x6d\x6d\x79\x5f"
+                                        "\x76\x6f\x69\x64\x5f\x73\x69\x6e\x67\x6c"
+                                        "\x65\x61\x72\x67\x91\x2a";
+        dispatcher.bind("dummy_void_singlearg", &dummy_void_refarg);
+        raw_call(raw_msg);
+    }
 
+    void ref_double_arg_func()
+    {
+        const unsigned char raw_msg[] = "\x94\x00\x00\xb3\x64\x75\x6d\x6d\x79\x5f"
+                                "\x76\x6f\x69\x64\x5f\x6d\x75\x6c\x74\x69"
+                                "\x61\x72\x67\x92\xcd\x01\x6b\x0c";
+        dispatcher.bind("dummy_void_multiarg", &dummy_void_double_args_ref);
+        raw_call(raw_msg);
+        
+    }
 protected:
     rpc::detail::dispatcher dispatcher;
 };
@@ -60,6 +97,91 @@ TEST_F(binding_test, freefunc_void_singlearg) {
     raw_call(raw_msg);
     EXPECT_TRUE(g_dummy_void_singlearg_called);
 }
+
+
+
+
+
+
+
+TEST_F(binding_test, freefunc_void_single_ref_arg) {
+    //using func_args_types1 = rpc::detail::func_traits<decltype(&dummy_int_refarg)>::refs_args_type;
+    //using func_args_types2 = rpc::detail::func_traits<decltype(&dummy_void_refarg)>::refs_args_type;
+//    using func_args_types3_raw = rpc::detail::func_traits<decltype(& dummy_multi_arg_wref)>::args_type;
+//    using func_args_types3 = rpc::detail::func_traits<decltype(& dummy_multi_arg_wref)>::refs_args_type;
+    //using func_args_types4 = rpc::detail::func_traits<decltype(&dummy_void_multiarg)>::refs_args_type;
+//
+    //rpc::detail::PrintType<func_args_types1>();
+    //rpc::detail::PrintType<func_args_types2>();
+//    rpc::detail::PrintType<func_args_types3>();
+//    rpc::detail::PrintType<func_args_types3_raw>();
+//    rpc::detail::PrintType<rpc::detail::RefArgsProducer<func_args_types3_raw>::template RefArgsPointer<func_args_types3>::tuple_type>();
+//    rpc::detail::PrintType<rpc::detail::RefArgsProducer<func_args_types3_raw>::template RefArgsPointer<func_args_types3>::sequence_type>();
+    //rpc::detail::PrintType<func_args_types4>();
+    //rpc::detail::PrintType<rpc::detail::has_ref_args<decltype(&dummy_void_multiarg)> >();
+    //rpc::detail::PrintType<rpc::detail::has_ref_args<decltype(&dummy_multi_arg_wref)> >();
+    auto lamtest = [&](int k,int i)
+    {
+        printf("%d %d\n",k,i);
+        return 0;
+    };
+    auto lamtest2 = [&](int k,int& i)
+    {
+        printf("%d %d\n",k,i);
+        return 0;
+    };
+    auto lamtest3 = [&](int& k,int i)
+    {
+        printf("%d %d\n",k,i);
+        return 0;
+    };
+    auto lamtest4=[](const std::string& p)
+    {
+        return p;
+    };
+    using functype = decltype(lamtest);
+    using lam_args_type_traits  = rpc::detail::func_traits< functype >;
+    using merged_args_types     = lam_args_type_traits::merged_args_type;
+    using result_type           = lam_args_type_traits::result_type   ;
+    using refs_args_type        = lam_args_type_traits::refs_args_type;
+    using arg_count             = lam_args_type_traits::arg_count     ;
+    using args_type             = lam_args_type_traits::args_type     ;
+    
+    PRINTTYPE(functype);  
+    PRINTTYPE(lam_args_type_traits);  
+    PRINTTYPE(merged_args_types   );  
+    PRINTTYPE(result_type         );  
+    PRINTTYPE(refs_args_type      );  
+    PRINTTYPE(arg_count           );  
+    PRINTTYPE(args_type           ); 
+    PRINTTYPE(rpc::detail::has_ref_args< functype > ) ;
+    PRINTTYPE(rpc::detail::has_ref_args< functype >);
+
+    PRINTTYPE(rpc::detail::func_traits< decltype(lamtest2) >::refs_args_type);
+    PRINTTYPE(rpc::detail::func_traits< decltype(lamtest2) >::result_type);
+    PRINTTYPE(rpc::detail::has_ref_args< decltype(lamtest2) >);
+
+    PRINTTYPE(rpc::detail::func_traits< decltype(lamtest3) >::refs_args_type);
+    PRINTTYPE(rpc::detail::func_traits< decltype(lamtest3) >::result_type);
+    PRINTTYPE(rpc::detail::has_ref_args< decltype(lamtest3) >);
+
+    PRINTTYPE(rpc::detail::func_traits< decltype(lamtest4) >::refs_args_type);
+    PRINTTYPE(rpc::detail::func_traits< decltype(lamtest4) >::result_type);
+    PRINTTYPE(rpc::detail::has_ref_args< decltype(lamtest4) >);
+    using lam4types=rpc::detail::ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t,1>,const std::string&,void>::type;
+    using lam4argtype = const std::string&;
+    using lam4typescond_1  = std::conditional_t< 
+                                    !rpc::detail::is_tuple<lam4argtype>::value && 
+                                    (std::is_reference_v<lam4argtype> && !std::is_const_v<std::remove_reference_t<lam4argtype>>),
+                                    std::true_type,std::false_type >;
+    PRINTTYPE(lam4typescond_1);
+    EXPECT_NO_THROW(
+        ref_arg_func();
+        ref_double_arg_func();
+    );
+    
+}
+
 
 TEST_F(binding_test, freefunc_void_multiarg) {
     const unsigned char raw_msg[] = "\x94\x00\x00\xb3\x64\x75\x6d\x6d\x79\x5f"
