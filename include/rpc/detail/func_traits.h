@@ -276,14 +276,14 @@ template<typename Head > struct ReferenceTupleElementHandler<Head >:
 
 template<   size_t TLen,
             typename T1
-            > struct ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t ,TLen>,T1,std::enable_if_t< !is_tuple<T1>::value && (std::is_reference_v<T1> && !std::is_const_v<T1>) > >
+            > struct ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t ,TLen>,T1,std::enable_if_t< !is_tuple<T1>::value && (std::is_reference_v<T1> && !std::is_const_v< std::remove_reference_t< T1 > >) > >
 {
     using type = std::tuple<element_holder<TLen-1,T1>>;
 };
 
 template<   size_t TLen,
             typename T1
-            > struct ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t ,TLen>,T1,std::enable_if_t< !is_tuple<T1>::value && (!std::is_reference_v<T1> || std::is_const_v<T1>) > >
+            > struct ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t ,TLen>,T1,std::enable_if_t< !is_tuple<T1>::value && (!std::is_reference_v<T1> || std::is_const_v< std::remove_reference_t< T1 > >) > >
 {
     using type = std::tuple<void>;
 };
@@ -304,7 +304,7 @@ template<   size_t TLen,
             typename... Rest
             > struct ReferenceTupleElementHandlerImplRoot<  std::integral_constant<size_t ,TLen>,
                                                             std::tuple<T1,Rest...>,
-                                                            std::enable_if_t< std::is_reference_v<T1> && !std::is_const_v<T1> && (sizeof...(Rest) > 0) > >
+                                                            std::enable_if_t< std::is_reference_v<T1> && !std::is_const_v< std::remove_reference_t< T1 > > && (sizeof...(Rest) > 0) > >
 {
     using additional_type=ReferenceTupleElementHandlerImplRoot<   std::integral_constant<size_t , TLen>,
                                                                     std::tuple<Rest...>,
@@ -318,7 +318,7 @@ template<   size_t TLen,
             typename... Rest
             > struct ReferenceTupleElementHandlerImplRoot<  std::integral_constant<size_t ,TLen>,
                                                             std::tuple<T1,Rest...>,
-                                                            std::enable_if_t< (!std::is_reference_v<T1> || std::is_const_v<T1>) && (sizeof...(Rest) > 0) > >
+                                                            std::enable_if_t< (!std::is_reference_v<T1> || std::is_const_v< std::remove_reference_t< T1 > >) && (sizeof...(Rest) > 0) > >
 {
 //    using type = element_holder<TLen - 1 - sizeof...(Rest),T1>;
     using type = ReferenceTupleElementHandlerImplRoot<   std::integral_constant<size_t , TLen>,
@@ -331,14 +331,14 @@ template<   size_t TLen,
 
 template<typename T1,typename...T > struct ResultTraitsImpl;
 
-template<typename Res> struct ResultTraitsImpl<Res ,std::enable_if_t< !std::is_reference_v<Res> || std::is_const_v<Res> > >
+template<typename Res> struct ResultTraitsImpl<Res ,std::enable_if_t< !std::is_reference_v<Res> || std::is_const_v< std::remove_reference_t< Res > > > >
 {
     typedef std::decay_t<Res> type;
 };
 
 template<typename... Args> struct pack_has_references
 {
-    static constexpr bool value {((std::is_lvalue_reference_v<Args> && !std::is_const_v<Args>) || ...)};
+    static constexpr bool value {((std::is_lvalue_reference_v<Args> && !std::is_const_v< std::remove_reference_t< Args > >) || ...)};
 };
 
 

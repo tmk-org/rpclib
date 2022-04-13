@@ -170,8 +170,11 @@ TEST_F(binding_test, freefunc_void_single_ref_arg) {
     PRINTTYPE(rpc::detail::has_ref_args< decltype(lamtest4) >);
     using lam4types=rpc::detail::ReferenceTupleElementHandlerImplRoot<std::integral_constant<size_t,1>,const std::string&,void>::type;
     using lam4argtype = const std::string&;
-    using lam4typescond_1  = std::conditional_t< /*!rpc::detail::is_tuple<lam4argtype>::value && (std::is_reference_v<lam4argtype> && !*/std::is_const_v<lam4argtype>/*)*/,std::true_type,std::false_type >;
-PRINTTYPE(lam4typescond_1);
+    using lam4typescond_1  = std::conditional_t< 
+                                    !rpc::detail::is_tuple<lam4argtype>::value && 
+                                    (std::is_reference_v<lam4argtype> && !std::is_const_v<std::remove_reference_t<lam4argtype>>),
+                                    std::true_type,std::false_type >;
+    PRINTTYPE(lam4typescond_1);
     EXPECT_NO_THROW(
         ref_arg_func();
         ref_double_arg_func();
