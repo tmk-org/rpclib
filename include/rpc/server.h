@@ -93,6 +93,12 @@ public:
         disp_->bind(name, func);
     }
 
+    //! \brief Unbinds functors with a name asynchronously
+    //! This action is to performed asynchronously,since this is the only
+    //! way to provide reliability during detaching functor.
+    //! Explicit locking may tend to hardly detectable and debuggable drawbacks,such as deadlocks ,etc...
+    //! \param name The name of the functor.
+    void async_unbind(std::string const &name);
     //! \brief Sets the exception behavior in handlers. By default,
     //! handlers throwing will crash the server. If suppressing is on,
     //! the server will try to gather textual data and return it to

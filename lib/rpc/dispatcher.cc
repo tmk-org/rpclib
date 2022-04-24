@@ -139,5 +139,15 @@ void dispatcher::enforce_unique_name(std::string const &func) {
     }
 }
 
+void dispatcher::unbind(const std::string& nameLocal)
+{
+    auto pos = funcs_.find(nameLocal);
+    if (pos != end(funcs_)) 
+    {
+        funcs_.erase(pos);
+    }
+    
+}
+
 }
 } /* rpc */
