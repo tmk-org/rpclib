@@ -7,7 +7,7 @@ include(policies)
 include(msvc_support)
 include(coverage)
 include(check_warning_flag)
-
+set(CMAKE_CXX_EXTENSIONS OFF)
 #
 # Options
 #

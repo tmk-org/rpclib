@@ -172,4 +172,16 @@ void server::close_session(std::shared_ptr<detail::server_session> const &s) {
   // session shared pointer is released outside of the mutex
 }
 
+void server::async_unbind(std::string const &name)
+{
+    auto localDisp = disp_;
+    //auto nameLocal = name
+    pimpl->io_.dispatch(
+            [localDisp,nameLocal = name]()
+            {
+                localDisp->unbind(nameLocal);
+            }
+            );
+}
+
 } /* rpc */

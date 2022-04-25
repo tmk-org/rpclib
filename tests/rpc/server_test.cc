@@ -177,3 +177,16 @@ TEST(server_misc, server_is_moveable) {
     vec.push_back(std::move(s));
     EXPECT_THROW(vec[0].bind("foo", [](){}), std::logic_error);
 }
+
+TEST(server_misc, bind_unbind) {
+    rpc::server s(test_port);
+    s.async_run( 3 );
+    for (size_t i = 0; i < 10; i++)
+    {
+        s.bind("foo", [](){ std::this_thread::sleep_for(std::chrono::milliseconds(200)); });
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        s.async_unbind("foo");
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+    s.close_sessions();
+}
