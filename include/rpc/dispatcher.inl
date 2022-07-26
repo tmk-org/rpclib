@@ -146,12 +146,12 @@ template <typename F>
 }
 
 template <typename F>
-    void bind(std::string const &name, F func,
+    void dispatcher::bind(std::string const &/*name*/, F /*func*/,
               detail::tags::nonvoid_result const &,
               detail::tags::nonzero_arg const &,
               detail::tags::refs_args const&)
 {
-    bind(name,func,detail::tags::nonvoid_result{},detail::tags::nonzero_arg{});
+    //bind(name,func,detail::tags::nonvoid_result{},detail::tags::nonzero_arg{});
 }
 
 }
