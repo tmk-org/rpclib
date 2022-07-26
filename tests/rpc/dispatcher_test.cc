@@ -30,6 +30,12 @@ int dummy_int_refarg(int& p)
     return p;
 }
 
+double dummy_int__double_refarg(int& p) 
+{ 
+    p++; 
+    return p*1.5;
+}
+
 int dummy_multi_arg_wref(int& ,int ,std::string&,float,void*&)
 {
     return 1;
@@ -311,3 +317,28 @@ TEST_F(dispatch_test, unique_names_multiarg) {
     EXPECT_THROW(dispatcher.bind("foo", &dummy_void_multiarg), std::logic_error);
 }
 
+TEST_F(dispatch_test,non_void_ref_arg_test)
+{
+    using F = decltype(&dummy_int__double_refarg);
+    PRINTTYPE(F);
+    using rpc::detail::func_traits;
+    using args_type = typename func_traits<F>::args_type;
+    using ref_args_type = typename func_traits<F>::refs_args_type;
+    using producer = rpc::detail::RefArgsProducer<args_type>;
+    using retriever = producer::template RefArgsPointer<ref_args_type>;
+    using ref_args_type_tuple = typename retriever::tuple_type;
+    using ref_args_type_tuple_seq = typename retriever::sequence_type;
+    PRINTTYPE(args_type);
+    PRINTTYPE(ref_args_type);
+    PRINTTYPE(producer);
+    PRINTTYPE(retriever);
+    PRINTTYPE(ref_args_type_tuple);
+    PRINTTYPE(ref_args_type_tuple_seq);
+    RPCLIB_MSGPACK::object args_object(args_type(2));
+
+    args_type rev_args{};
+    args_object.convert(rev_args);
+    EXPECT_EQ(std::get<0>(rev_args),2);
+    //args_object.convert()
+    dispatcher.bind("dummy_int_refarg",&dummy_int__double_refarg);
+}
