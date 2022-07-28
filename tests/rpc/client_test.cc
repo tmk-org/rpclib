@@ -95,7 +95,7 @@ public:
         EXPECT_TRUE((ss!= ss_before) && (s!=s_before) && (ff!=ff_before));
     }
 
-    size_t complexFuncWithRefRet(int& p,double d,std::string& ret_str,const std::string& msg)
+    size_t complexFuncWithRefRet()
     {
         rpc::client client("127.0.0.1", test_port);
         int i = 5;
@@ -104,7 +104,7 @@ public:
         double ff_before = ff;
         std::string ss="before call";
         std::string ss_before = ss;
-        size_t res=client.call<int&,double,std::string& ,const std::string&>("ref_complex_arg_func",i,ff_before,ss_before,std::string("msg")).as<size_t>();
+        size_t res=client.call<int&,double,std::string& ,const std::string&>("complexFuncWithRet",i,ff_before,ss_before,std::string("msg")).as<size_t>();
         return 0;
     }
 protected:
@@ -140,6 +140,7 @@ TEST_F(client_test,double_ref_call){
     ref_arg_func();
     ref_double_arg_func();
     ref_complex_arg_func();
+    complexFuncWithRefRet();
 }
 
 TEST_F(client_test, large_return) {
