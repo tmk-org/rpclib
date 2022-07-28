@@ -18,6 +18,14 @@ void complexFunc(std::string& ss,int p,long& z,float& ff)
     ss = "after call p="+std::to_string(p)+",z="+std::to_string(z)+",ff="+std::to_string(ff);
 }
 
+size_t complexFuncWithRefRetNonMember(int& p,double d,std::string& ret_str,const std::string& msg)
+{
+    p++;
+    double temp = d*10.0*(p+3);
+    ret_str = "ret str "+msg+" "+std::to_string(p)+" "+std::to_string(d);
+    return (size_t) temp;
+}
+
 class client_test : public testing::Test {
 public:
     client_test() : s("127.0.0.1", test_port), is_running_(false) {
@@ -47,6 +55,7 @@ public:
                 {
                     complexFunc(ss,p,z,ff);
                 });
+        s.bind("complexFuncWithRet",complexFuncWithRefRetNonMember);
         s.async_run();
     }
 
@@ -85,6 +94,19 @@ public:
         client.call<std::string&,int,long&,float&>("ref_complex_arg_func",ss,i,s,ff);
         EXPECT_TRUE((ss!= ss_before) && (s!=s_before) && (ff!=ff_before));
     }
+
+    size_t complexFuncWithRefRet()
+    {
+        rpc::client client("127.0.0.1", test_port);
+        int i = 5;
+        
+        double ff=3.14159;
+        double ff_before = ff;
+        std::string ss="before call";
+        std::string ss_before = ss;
+        size_t res=client.call<int&,double,std::string& ,const std::string&>("complexFuncWithRet",i,ff_before,ss_before,std::string("msg")).as<size_t>();
+        return 0;
+    }
 protected:
     static RPCLIB_CONSTEXPR uint16_t test_port = rpc::constants::DEFAULT_PORT;
     MockDummy md;
@@ -118,6 +140,7 @@ TEST_F(client_test,double_ref_call){
     ref_arg_func();
     ref_double_arg_func();
     ref_complex_arg_func();
+    complexFuncWithRefRet();
 }
 
 TEST_F(client_test, large_return) {

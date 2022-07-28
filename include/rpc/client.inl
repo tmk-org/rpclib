@@ -11,11 +11,45 @@ template<typename...TInner,size_t...Inneridxs> struct RefArgsHandlerClientSide<s
         using Producer=detail::RefArgsProducer<std::tuple<std::decay_t<outerArgs>... > >;
         auto ret_object= future.get();
         auto object=ret_object.get();
-        auto rv_obj = std::tuple<std::decay_t<TInner>...>{};
-        //ret_value_type rv_obj={};
-        object.convert(rv_obj);
-        Producer::template  ReprojectTuple<std::tuple<TInner...>,std::index_sequence<Inneridxs...> >::
-                            ReprojectBack(std::tie(args...),std::move(rv_obj));
+        
+        if(object.via.array.size == sizeof...(TInner))
+        {
+            /* void returns*/
+            auto rv_obj = std::tuple<std::decay_t<TInner>...>{};
+            object.convert(rv_obj);
+            Producer::template  ReprojectTuple<std::tuple<TInner...>,std::index_sequence<Inneridxs...> >::
+                            ReprojectBack(std::tie(const_cast<std::remove_cv_t<outerArgs>&>(args)...),std::move(rv_obj));
+        }
+        else
+        {
+        //    clmdep_msgpack::object::with_zone& o,
+        //std::tuple<Args...> const& v) const {
+        //uint32_t size = checked_get_container_size(sizeof...(Args));
+        //o.type = clmdep_msgpack::type::ARRAY;
+        //o.via.array.ptr = static_cast<clmdep_msgpack::object*>(o.zone.allocate_align(sizeof(clmdep_msgpack::object)*size, MSGPACK_ZONE_ALIGNOF(clmdep_msgpack::object)));
+        //o.via.array.size = size;
+            {
+                constexpr const size_t size_only_refs = sizeof...(TInner);
+                RPCLIB_MSGPACK::zone zone_temp;
+                RPCLIB_MSGPACK::object only_ref_arg;
+                only_ref_arg.type =clmdep_msgpack::type::ARRAY;
+                only_ref_arg.via.array.size = size_only_refs;
+                only_ref_arg.via.array.ptr=static_cast<clmdep_msgpack::object*>(zone_temp.allocate_align(sizeof(clmdep_msgpack::object)*size_only_refs , MSGPACK_ZONE_ALIGNOF(clmdep_msgpack::object)));
+                for(size_t ref_idx=0;ref_idx<size_only_refs;ref_idx++)
+                {
+                    only_ref_arg.via.array.ptr[ref_idx]=object.via.array.ptr[ref_idx+1];
+                }
+                auto rv_obj = std::tuple<std::decay_t<TInner>...>{};
+                only_ref_arg.convert(rv_obj);
+                Producer::template  ReprojectTuple<std::tuple<TInner...>,std::index_sequence<Inneridxs...> >::
+                                ReprojectBack(std::tie(const_cast<std::remove_cv_t<outerArgs>&>(args)...),std::move(rv_obj));
+            }
+            /*non-void returns*/
+            return RPCLIB_MSGPACK::object_handle( object.via.array.ptr[0],rpc::detail::make_unique<RPCLIB_MSGPACK::zone>());
+        }
+        
+        
+        
         return ret_object;
     }
 };
@@ -46,7 +80,7 @@ RPCLIB_MSGPACK::object_handle client::call( std::string const &func_name,
     {
         using merged_args_type = detail::ResultTraits<void,Args...>::type;
         using ref_args_type = detail::ReferenceTupleElementHandler< merged_args_type > ::type;
-        using args_type = std::tuple<std::decay_t<Args>...>;
+        using args_type = std::tuple<std::remove_cv_t< std::decay_t<Args> >...>;
         using producer = detail::RefArgsProducer<args_type>;
         using retriever = producer::template RefArgsPointer<ref_args_type>;
         using ref_args_type_tuple = typename retriever::tuple_type;

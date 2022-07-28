@@ -361,7 +361,7 @@ template<typename Res,typename... Args  > struct ResultTraitsImpl< Res ,std::ena
 
 template<typename T,typename...T1> struct ResultTraits : ResultTraitsImpl<T,void,T1...>{};
 template <typename R, typename... Args> struct func_traits<R (*)(Args...)> {
-    using merged_args_type = ResultTraits<R,Args...>::type;
+    using merged_args_type = ResultTraits</*R,*/void,Args...>::type;
     using result_type = R;
     using refs_args_type = ReferenceTupleElementHandler< merged_args_type > ::type;
     using arg_count = std::integral_constant<std::size_t, sizeof...(Args)>;

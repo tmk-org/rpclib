@@ -3,6 +3,8 @@
 #include "gmock/gmock.h"
 
 #include "rpc/dispatcher.h"
+#include "rpc/client.h"
+//#include "rpc/client.inl"
 #include "testutils.h"
 
 using namespace rpc::testutils;
@@ -28,6 +30,20 @@ int dummy_int_refarg(int& p)
 { 
     p++; 
     return p;
+}
+
+double dummy_int__double_refarg(int& p) 
+{ 
+    p++; 
+    return p*1.5;
+}
+
+std::string dummy_int_multi_ref_args(int& p,double d,std::string& str,const std::string msg)
+{
+    p++;
+    str = msg + std::to_string(p)+ " " + std::to_string(d);
+    std::string ret_str=msg+" return "+ std::to_string(p);
+    return ret_str;
 }
 
 int dummy_multi_arg_wref(int& ,int ,std::string&,float,void*&)
@@ -311,3 +327,83 @@ TEST_F(dispatch_test, unique_names_multiarg) {
     EXPECT_THROW(dispatcher.bind("foo", &dummy_void_multiarg), std::logic_error);
 }
 
+TEST_F(dispatch_test,non_void_ref_arg_test)
+{
+    std::string func_name="dummy_int_refarg";
+    using F = decltype(&dummy_int__double_refarg);
+    PRINTTYPE(F);
+    using rpc::detail::func_traits;
+    using args_type = typename func_traits<F>::args_type;
+    using ref_args_type = typename func_traits<F>::refs_args_type;
+    using producer = rpc::detail::RefArgsProducer<args_type>;
+    using retriever = producer::template RefArgsPointer<ref_args_type>;
+    using ref_args_type_tuple = typename retriever::tuple_type;
+    using ref_args_type_tuple_seq = typename retriever::sequence_type;
+    PRINTTYPE(args_type);
+    PRINTTYPE(ref_args_type);
+    PRINTTYPE(producer);
+    PRINTTYPE(retriever);
+    PRINTTYPE(typename retriever::tuple_type);
+    PRINTTYPE(typename retriever::sequence_type);
+    int arg_int = 2;
+    args_type args{arg_int};
+    auto call_obj =
+        std::make_tuple(static_cast<uint8_t>(/*rpc::client::request_type::call*/0), 1,
+                        func_name, args);
+    auto buffer = std::make_shared<RPCLIB_MSGPACK::sbuffer>();
+    RPCLIB_MSGPACK::pack(*buffer, call_obj);
+
+    dispatcher.bind(func_name,&dummy_int__double_refarg);
+    
+    auto unpacked = RPCLIB_MSGPACK::unpack(buffer->data(), buffer->size());
+    auto responce=dispatcher.dispatch(unpacked.get());
+    EXPECT_FALSE(responce.is_empty());
+    auto obj_res=responce.get_result();
+    auto [res_typed_double,res_typed_int]=obj_res->as<std::tuple<double,int>>();
+    EXPECT_EQ(res_typed_double,1.5*((double)(arg_int+1)));
+    EXPECT_EQ(res_typed_int,(arg_int+1));
+}
+
+TEST_F(dispatch_test,non_void_ref_multi_arg_test)
+{
+    std::string func_name="dummy_int_multi_ref_args";
+    using F = decltype(&dummy_int_multi_ref_args);
+    PRINTTYPE(F);
+    using rpc::detail::func_traits;
+    using args_type = typename func_traits<F>::args_type;
+    using ref_args_type = typename func_traits<F>::refs_args_type;
+    using producer = rpc::detail::RefArgsProducer<args_type>;
+    using retriever = producer::template RefArgsPointer<ref_args_type>;
+    using ref_args_type_tuple = typename retriever::tuple_type;
+    using ref_args_type_tuple_seq = typename retriever::sequence_type;
+    PRINTTYPE(args_type);
+    PRINTTYPE(ref_args_type);
+    PRINTTYPE(producer);
+    PRINTTYPE(retriever);
+    PRINTTYPE(typename retriever::tuple_type);
+    PRINTTYPE(typename retriever::sequence_type);
+    int arg_int = 2;
+    double arg_double=5.0;
+    std::string in_out="ref string";
+    std::string msg = "msg string";
+    args_type args{arg_int,arg_double,in_out,msg};
+    auto call_obj =
+        std::make_tuple(static_cast<uint8_t>(/*rpc::client::request_type::call*/0), 1,
+                        func_name, args);
+    auto buffer = std::make_shared<RPCLIB_MSGPACK::sbuffer>();
+    RPCLIB_MSGPACK::pack(*buffer, call_obj);
+    
+    
+    dispatcher.bind(func_name,&dummy_int_multi_ref_args);
+    
+    auto unpacked = RPCLIB_MSGPACK::unpack(buffer->data(), buffer->size());
+    auto responce=dispatcher.dispatch(unpacked.get());
+    EXPECT_FALSE(responce.is_empty());
+    auto obj_res=responce.get_result();
+    auto [res_str_ret,res_typed_int,res_str_out]=obj_res->as<std::tuple<std::string,int,std::string>>();
+    //EXPECT_EQ(res_typed_double,1.5*((double)(arg_int+1)));
+    EXPECT_EQ(res_typed_int,(arg_int+1));
+    
+}
+/*
+*/

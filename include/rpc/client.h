@@ -9,7 +9,7 @@
 #include "rpc/detail/log.h"
 #include "rpc/detail/pimpl.h"
 #include "rpc/msgpack.hpp"
-
+#include "rpc/detail/make_unique.h"
 namespace rpc {
 
 //! \brief Implements a client that connects to a msgpack-rpc server and is
