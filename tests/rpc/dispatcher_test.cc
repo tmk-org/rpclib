@@ -56,6 +56,29 @@ void dummy_void_double_args_ref(int,int& n)
     n *= 10;
 }
 
+enum class EnumInt
+{
+    VALUE1,
+    VALUE2,
+    VALUE3
+};
+
+enum class EnumShort:unsigned short
+{
+    VALUE_SHORT1,
+    VALUE_SHORT2,
+    VALUE_SHORT3,
+};
+
+void enum_func(EnumInt val)
+{
+    (void)val;
+}
+
+EnumInt enum_func_ret(EnumShort val)
+{
+    return (EnumInt)(unsigned short)val;
+}
 class binding_test : public testing::Test {
 public:
     binding_test() : dispatcher() {
@@ -402,8 +425,22 @@ TEST_F(dispatch_test,non_void_ref_multi_arg_test)
     auto obj_res=responce.get_result();
     auto [res_str_ret,res_typed_int,res_str_out]=obj_res->as<std::tuple<std::string,int,std::string>>();
     //EXPECT_EQ(res_typed_double,1.5*((double)(arg_int+1)));
-    EXPECT_EQ(res_typed_int,(arg_int+1));
-    
+    EXPECT_EQ(res_typed_int,(arg_int+1));   
 }
-/*
-*/
+
+TEST_F(dispatch_test,simpleEnumTest)
+{
+    std::string func_name="enum_func";
+    using F = decltype(&enum_func);
+    dispatcher.bind(func_name,&enum_func);
+    auto args = std::make_tuple(EnumInt::VALUE1);
+    auto call_obj =
+    std::make_tuple(static_cast<uint8_t>(/*rpc::client::request_type::call*/0), 1,
+                    func_name, args);
+    auto buffer = std::make_shared<RPCLIB_MSGPACK::sbuffer>();
+    RPCLIB_MSGPACK::pack(*buffer, call_obj);
+    auto unpacked = RPCLIB_MSGPACK::unpack(buffer->data(), buffer->size());
+    EXPECT_NO_THROW(
+        dispatcher.dispatch(unpacked.get());
+    );
+}

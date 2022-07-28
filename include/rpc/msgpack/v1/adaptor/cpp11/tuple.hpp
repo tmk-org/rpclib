@@ -57,6 +57,20 @@ struct pack<std::tuple<Args...>> {
     }
 };
 
+
+template <typename Arg  >
+struct pack<Arg> {
+    template <typename Stream>
+    std::enable_if<std::is_enum_v<Arg>, clmdep_msgpack::packer<Stream> >::type & operator()(
+        clmdep_msgpack::packer<Stream>& o,
+        const Arg& v) const {
+        using under_type = std::underlying_type_t<Arg>;
+        under_type raw_val=(under_type)v;
+        o.pack(raw_val);
+        return o;
+    }
+};
+
 } // namespace adaptor
 
 // --- Convert from tuple to object ---
@@ -124,6 +138,20 @@ struct convert<std::tuple<Args...>> {
         std::tuple<Args...>& v) const {
         if(o.type != clmdep_msgpack::type::ARRAY) { throw clmdep_msgpack::type_error(); }
         StdTupleConverter<decltype(v), sizeof...(Args)>::convert(o, v);
+        return o;
+    }
+};
+
+template <typename Args>
+struct convert< Args > {
+    std::enable_if<std::is_enum_v<Args>,clmdep_msgpack::object >::type /*clmdep_msgpack::object */const& operator()(
+        clmdep_msgpack::object const& o,
+        Args& v) const {
+        using raw_type = std::underlying_type_t<Args>;
+        raw_type& raw_val=(raw_type&)(v);
+        convert<raw_type>()(o,raw_val);
+        //if(o.type != clmdep_msgpack::type::ARRAY) { throw clmdep_msgpack::type_error(); }
+        //StdTupleConverter<decltype(v), sizeof...(Args)>::convert(o, v);
         return o;
     }
 };
