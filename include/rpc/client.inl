@@ -11,11 +11,22 @@ template<typename...TInner,size_t...Inneridxs> struct RefArgsHandlerClientSide<s
         using Producer=detail::RefArgsProducer<std::tuple<std::decay_t<outerArgs>... > >;
         auto ret_object= future.get();
         auto object=ret_object.get();
-        auto rv_obj = std::tuple<std::decay_t<TInner>...>{};
-        //ret_value_type rv_obj={};
-        object.convert(rv_obj);
-        Producer::template  ReprojectTuple<std::tuple<TInner...>,std::index_sequence<Inneridxs...> >::
-                            ReprojectBack(std::tie(args...),std::move(rv_obj));
+        
+        if(object.via.array.size == sizeof(TInner...))
+        {
+            /* void returns*/
+            auto rv_obj = std::tuple<std::decay_t<TInner>...>{};
+            object.convert(rv_obj);
+            Producer::template  ReprojectTuple<std::tuple<TInner...>,std::index_sequence<Inneridxs...> >::
+                            ReprojectBack(std::tie(const_cast<std::remove_cv_t<outerArgs>&>(args)...),std::move(rv_obj));
+        }
+        else
+        {
+            /*non-void returns*/
+        }
+        
+        
+        
         return ret_object;
     }
 };
@@ -46,7 +57,7 @@ RPCLIB_MSGPACK::object_handle client::call( std::string const &func_name,
     {
         using merged_args_type = detail::ResultTraits<void,Args...>::type;
         using ref_args_type = detail::ReferenceTupleElementHandler< merged_args_type > ::type;
-        using args_type = std::tuple<std::decay_t<Args>...>;
+        using args_type = std::tuple<std::remove_cv_t< std::decay_t<Args> >...>;
         using producer = detail::RefArgsProducer<args_type>;
         using retriever = producer::template RefArgsPointer<ref_args_type>;
         using ref_args_type_tuple = typename retriever::tuple_type;
