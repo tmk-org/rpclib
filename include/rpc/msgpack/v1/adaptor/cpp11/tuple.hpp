@@ -144,14 +144,12 @@ struct convert<std::tuple<Args...>> {
 
 template <typename Args>
 struct convert< Args > {
-    std::enable_if<std::is_enum_v<Args>,clmdep_msgpack::object >::type /*clmdep_msgpack::object */const& operator()(
+    std::enable_if<std::is_enum_v<Args>,clmdep_msgpack::object >::type const& operator()(
         clmdep_msgpack::object const& o,
         Args& v) const {
         using raw_type = std::underlying_type_t<Args>;
         raw_type& raw_val=(raw_type&)(v);
         convert<raw_type>()(o,raw_val);
-        //if(o.type != clmdep_msgpack::type::ARRAY) { throw clmdep_msgpack::type_error(); }
-        //StdTupleConverter<decltype(v), sizeof...(Args)>::convert(o, v);
         return o;
     }
 };
@@ -189,6 +187,17 @@ struct object_with_zone<std::tuple<Args...>> {
         o.via.array.ptr = static_cast<clmdep_msgpack::object*>(o.zone.allocate_align(sizeof(clmdep_msgpack::object)*size, MSGPACK_ZONE_ALIGNOF(clmdep_msgpack::object)));
         o.via.array.size = size;
         StdTupleToObjectWithZone<decltype(v), sizeof...(Args)>::convert(o, v);
+    }
+};
+
+template <typename Args>
+struct object_with_zone<Args> {
+    std::enable_if<std::is_enum_v<Args>, void>::type operator()(
+        clmdep_msgpack::object::with_zone& o,
+        Args const& v) const {
+        using raw_type = std::underlying_type_t<Args>;
+        const raw_type& raw_val=(const raw_type&)(v);
+        object_with_zone<raw_type>()(o,raw_val);
     }
 };
 

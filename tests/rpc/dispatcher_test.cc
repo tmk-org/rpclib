@@ -9,6 +9,20 @@
 
 using namespace rpc::testutils;
 
+enum class EnumInt
+{
+    VALUE1,
+    VALUE2,
+    VALUE3
+};
+
+enum class EnumShort:unsigned short
+{
+    VALUE_SHORT1,
+    VALUE_SHORT2,
+    VALUE_SHORT3,
+};
+
 // Unit tests for binding functions to names.
 // A couple of these tests exist to check if the code compiles correctly,
 // obviously that is not in the scope of normal unit testing.
@@ -18,6 +32,8 @@ using namespace rpc::testutils;
 bool g_dummy_void_zeroarg_called;
 bool g_dummy_void_singlearg_called;
 bool g_dummy_void_multiarg_called;
+EnumInt g_simpleEnum_test_called;
+EnumShort g_shortEnumTestCalled;
 void dummy_void_zeroarg() { g_dummy_void_zeroarg_called = true; }
 void dummy_void_singlearg(int) { g_dummy_void_singlearg_called = true; }
 void dummy_void_multiarg(int, int) { g_dummy_void_multiarg_called = true; }
@@ -56,29 +72,41 @@ void dummy_void_double_args_ref(int,int& n)
     n *= 10;
 }
 
-enum class EnumInt
-{
-    VALUE1,
-    VALUE2,
-    VALUE3
-};
-
-enum class EnumShort:unsigned short
-{
-    VALUE_SHORT1,
-    VALUE_SHORT2,
-    VALUE_SHORT3,
-};
 
 void enum_func(EnumInt val)
 {
-    (void)val;
+    g_simpleEnum_test_called=val;
 }
 
 EnumInt enum_func_ret(EnumShort val)
 {
     return (EnumInt)(unsigned short)val;
 }
+
+EnumInt enum_func_ret_ref(EnumInt& in,EnumShort shortVal )
+{
+    EnumInt ret1,ret2;
+    switch (in)
+    {
+    case EnumInt::VALUE1 :
+        ret1 = EnumInt::VALUE2;
+        ret2 = EnumInt::VALUE3;
+        break;
+    case EnumInt::VALUE2 :
+        ret1 = EnumInt::VALUE1;
+        ret2 = EnumInt::VALUE3;
+        break;
+    case EnumInt::VALUE3 :
+        ret1 = EnumInt::VALUE1;
+        ret2 = EnumInt::VALUE2;
+        break;
+    default:
+        break;
+    }
+    in = ret2;
+    return ret1;
+}
+
 class binding_test : public testing::Test {
 public:
     binding_test() : dispatcher() {
@@ -433,7 +461,8 @@ TEST_F(dispatch_test,simpleEnumTest)
     std::string func_name="enum_func";
     using F = decltype(&enum_func);
     dispatcher.bind(func_name,&enum_func);
-    auto args = std::make_tuple(EnumInt::VALUE1);
+    EnumInt arg = EnumInt::VALUE2;
+    auto args = std::make_tuple(arg);
     auto call_obj =
     std::make_tuple(static_cast<uint8_t>(/*rpc::client::request_type::call*/0), 1,
                     func_name, args);
@@ -443,4 +472,28 @@ TEST_F(dispatch_test,simpleEnumTest)
     EXPECT_NO_THROW(
         dispatcher.dispatch(unpacked.get());
     );
+    EXPECT_EQ(g_simpleEnum_test_called,arg);
+}
+
+TEST_F(dispatch_test,complexEnumTest)
+{
+    std::string func_name="enum_func_ret_ref";
+    using F = decltype(&enum_func_ret_ref);
+    dispatcher.bind(func_name,&enum_func_ret_ref);
+    EnumInt arg1 = EnumInt::VALUE1;
+    EnumShort arg2 = EnumShort::VALUE_SHORT1;
+    auto args = std::make_tuple(arg1,arg2);
+    auto call_obj =
+    std::make_tuple(static_cast<uint8_t>(/*rpc::client::request_type::call*/0), 1,
+                    func_name, args);
+    auto buffer = std::make_shared<RPCLIB_MSGPACK::sbuffer>();
+    RPCLIB_MSGPACK::pack(*buffer, call_obj);
+    auto unpacked = RPCLIB_MSGPACK::unpack(buffer->data(), buffer->size());
+    auto responce= dispatcher.dispatch(unpacked.get());
+    EXPECT_FALSE(responce.is_empty());
+    auto [ret,ref]= responce.get_result()->as<std::tuple<EnumInt,EnumInt>>();
+    EXPECT_EQ(g_shortEnumTestCalled,arg2);
+    EXPECT_EQ(ret,EnumInt::VALUE2);
+    EXPECT_EQ(ref,EnumInt::VALUE3);
+    
 }

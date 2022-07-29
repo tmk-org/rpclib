@@ -11,6 +11,45 @@
 
 using namespace rpc::testutils;
 
+enum class EnumInt
+{
+    VALUE1,
+    VALUE2,
+    VALUE3
+};
+
+enum class EnumShort:unsigned short
+{
+    VALUE_SHORT1,
+    VALUE_SHORT2,
+    VALUE_SHORT3,
+};
+
+EnumInt enumComplexFunc(EnumInt& in, EnumShort in_sh,std::string& msg,int p)
+{
+    EnumInt ret,ret2;
+    switch (in)
+    {
+    case EnumInt::VALUE1 :
+        ret = EnumInt::VALUE2;
+        ret2= EnumInt::VALUE3;
+        break;
+    case EnumInt::VALUE2 :
+        ret = EnumInt::VALUE3;
+        ret2= EnumInt::VALUE1;
+        break;
+    case EnumInt::VALUE3 :
+        ret = EnumInt::VALUE1;
+        ret2= EnumInt::VALUE2;
+        break;
+    default:
+        break;
+    }
+    in = ret2;
+    msg += (std::to_string((unsigned short)in_sh) + " " + std::to_string(p));
+    return ret;
+}
+
 void complexFunc(std::string& ss,int p,long& z,float& ff)
 {
     z=20*p;
@@ -56,6 +95,7 @@ public:
                     complexFunc(ss,p,z,ff);
                 });
         s.bind("complexFuncWithRet",complexFuncWithRefRetNonMember);
+        s.bind("enumComplexFunc",enumComplexFunc);
         s.async_run();
     }
 
@@ -107,6 +147,22 @@ public:
         size_t res=client.call<int&,double,std::string& ,const std::string&>("complexFuncWithRet",i,ff_before,ss_before,std::string("msg")).as<size_t>();
         return 0;
     }
+
+    void testWithEnum()
+    {
+        rpc::client client("127.0.0.1", test_port);
+        int i = 5;
+        
+        
+        std::string ss="before call";
+        std::string ss_before = ss;
+        EnumInt in = EnumInt::VALUE2;
+        EnumShort in_sh = EnumShort::VALUE_SHORT2;
+        EnumInt res=client.call<EnumInt&,EnumShort,std::string& ,int>("enumComplexFunc",in,in_sh,ss_before,i).as<EnumInt>();
+        EXPECT_NE(ss,ss_before);
+        EXPECT_EQ(res,EnumInt::VALUE3);
+        EXPECT_EQ(in,EnumInt::VALUE1);
+    }
 protected:
     static RPCLIB_CONSTEXPR uint16_t test_port = rpc::constants::DEFAULT_PORT;
     MockDummy md;
@@ -141,6 +197,11 @@ TEST_F(client_test,double_ref_call){
     ref_double_arg_func();
     ref_complex_arg_func();
     complexFuncWithRefRet();
+}
+
+TEST_F(client_test,complexEnumCall)
+{
+    testWithEnum();
 }
 
 TEST_F(client_test, large_return) {
